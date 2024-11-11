@@ -82,6 +82,7 @@ enum
 {
   SERVER_LOGIN     = 1, // µÇÂ¼
   SERVER_HEARTBEAT = 2, // ÐÄÌø
+  SERVER_LOGIN_SUCCESS = 3, // µÇÂ¼³É¹¦
 };
 
 void RunFunc(io_event* ev, DataPacket* packet)
@@ -103,7 +104,7 @@ void RunFunc(io_event* ev, DataPacket* packet)
 
       DataPacket pd{};
 
-      pd.id     = 2;
+      pd.id     = SERVER_LOGIN_SUCCESS;
       pd.value1 = 996;
       pd.data   = "test data!";
 
