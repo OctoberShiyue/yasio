@@ -23,7 +23,7 @@ struct DataPacket {
   };
   Header header;
 
-  int8_t id; // 信息
+  int8_t id; // 淇℃伅
   uint16_t value1;
   int64_t value2;
   bool value3;
@@ -80,9 +80,9 @@ struct DataPacket {
 
 enum
 {
-  SERVER_LOGIN     = 1, // 登录
-  SERVER_HEARTBEAT = 2, // 心跳
-  SERVER_LOGIN_SUCCESS = 3, // 登录成功
+  SERVER_LOGIN         = 1, // 鐧诲綍
+  SERVER_HEARTBEAT     = 2, // 蹇冭烦
+  SERVER_LOGIN_SUCCESS = 3, // 鐧诲綍鎴愬姛
 };
 
 void RunFunc(io_event* ev, DataPacket* packet)
@@ -90,17 +90,23 @@ void RunFunc(io_event* ev, DataPacket* packet)
   if (!packet->passwd._Equal(gpasswd))
     return;
 
+  auto p = gPlayers[ev->transport()->id()];
+
+  if (packet->id != SERVER_LOGIN && p->GetUid() <= 10000)
+  {
+    return;
+  }
+
   switch (packet->id)
   {
 
     case SERVER_LOGIN: {
       auto uid = packet->uid;
-      // printf("数据=%lld",uid);
       if (uid <= 10000)
       {
         return;
       }
-      gPlayers[ev->transport()->id()]->Login(uid);
+      p->Login(uid);
 
       DataPacket pd{};
 
@@ -115,7 +121,7 @@ void RunFunc(io_event* ev, DataPacket* packet)
       break;
     }
     case SERVER_HEARTBEAT: {
-      gPlayers[ev->transport()->id()]->UpdateHeartbeat();
+      p->UpdateHeartbeat();
       break;
     }
   }
@@ -145,7 +151,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
   timer.expires_from_now(std::chrono::seconds(1));
   timer.async_wait_once([=](io_service& server) {
     server.set_option(YOPT_C_UNPACK_PARAMS, 0, 65535, 0, 4, 0);
-    printf("[%s] open server %s:%u ...\n", protocol, ip, port);
+    printf("[server][%s] open server %s:%u ...\n", protocol, ip, port);
     if (cxx20::ic::iequals(protocol, "udp"))
       server.open(0, YCK_UDP_SERVER);
     else if (cxx20::ic::iequals(protocol, "kcp"))
@@ -202,11 +208,11 @@ int main(int argc, char** argv)
 
   if (nullptr == mysql_real_connect(mysql, "124.223.83.199", "testorpg", "mh4wabJCGnLMWH7E", "testorpg", 3306, nullptr, 0))
   {
-    printf("数据库连接失败\n");
+    printf("[mysql] connect fail\n");
     return 0;
   }
 
-  printf("数据库连接成功!\n");
+  printf("[mysql] connect success\n");
 
   run_echo_server("0.0.0.0", 18199, "tcp");
   return 0;

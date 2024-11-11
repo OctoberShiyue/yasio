@@ -14,6 +14,8 @@ public:
 
   void UpdateHeartbeat() { this->online_time = getTimeStamp(); };
 
+  int64_t GetUid(){return this->uid;};
+
   highp_time_t online_time;
   highp_time_t login_time;
 
@@ -24,9 +26,9 @@ private:
   io_base* ib;
   io_service* service;
 
-  deadline_timer_ptr onetime; // µÚÒ»´ÎÁ¬½ÓÑéÖ¤¼ÆÊ±Æ÷
+  deadline_timer_ptr onetime; // ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¤ï¿½ï¿½Ê±ï¿½ï¿½
 
-  deadline_timer_ptr heartbeat_time; // ĞÄÌø¼ÆÊ±Æ÷
+  deadline_timer_ptr heartbeat_time; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½
 };
 
 Player::Player(io_service* service, io_base* th)
@@ -34,9 +36,9 @@ Player::Player(io_service* service, io_base* th)
   this->ib      = th;
   this->id      = th->id();
   this->service = service;
-  printf("%d ¿Í»§¶ËÁ¬½Ó\n", this->id);
+  printf("%d ï¿½Í»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\n", this->id);
 
-  // µÚÒ»´Î½¨Á¢Á¬½Ó£¬¿Í»§¶ËºÍ·şÎñ¶Ë½¨Á¢Á¬½Ó£¬ĞèÒªÂíÉÏÈÃ¿Í»§¶Ë·¢ËÍµÇÂ¼ÑéÖ¤µ½·şÎñ¶ËÄÇ£¬Èç¹û³¬¹ı3Ãë£¬½«×Ô¶¯¶Ï¿ªÁ¬½Ó
+  // ï¿½ï¿½Ò»ï¿½Î½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó£ï¿½ï¿½Í»ï¿½ï¿½ËºÍ·ï¿½ï¿½ï¿½Ë½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó£ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½Ã¿Í»ï¿½ï¿½Ë·ï¿½ï¿½Íµï¿½Â¼ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½3ï¿½ë£¬ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½Ï¿ï¿½ï¿½ï¿½ï¿½ï¿½
 
   this->onetime = service->schedule(std::chrono::milliseconds(3000), [th](io_service& service) {
     service.close((transport_handle_t)th);
@@ -56,7 +58,7 @@ Player::~Player()
   this->ib             = nullptr;
   this->onetime        = nullptr;
 
-  printf("%d ¿Í»§¶Ë¶Ï¿ª\n", this->id);
+  printf("%d ï¿½Í»ï¿½ï¿½Ë¶Ï¿ï¿½\n", this->id);
 }
 
 void Player::Login(int64_t uid)
@@ -67,17 +69,17 @@ void Player::Login(int64_t uid)
   this->login_time  = getTimeStamp();
   this->online_time = getTimeStamp();
 
-  printf("%d ¿Í»§¶ËµÇÂ¼UID£º%lld\n", this->id, this->uid);
+  printf("%d ï¿½Í»ï¿½ï¿½Ëµï¿½Â¼UIDï¿½ï¿½%lld\n", this->id, this->uid);
 
   auto th = this->ib;
   auto thisplayer = this;
-  // ĞÄÌø¼ÆÊ±Æ÷£¬10ÃëÒ»´Î
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½10ï¿½ï¿½Ò»ï¿½ï¿½
   this->heartbeat_time = service->schedule(std::chrono::milliseconds(10000), [th, thisplayer](io_service& service) {
     auto now_time = getTimeStamp();
 
-    //printf("%d ¿Í»§¶ËµÇÂ¼UID£º%lld=%lld\n", thisplayer->id, thisplayer->uid, now_time - thisplayer->online_time);
+    //printf("%d ï¿½Í»ï¿½ï¿½Ëµï¿½Â¼UIDï¿½ï¿½%lld=%lld\n", thisplayer->id, thisplayer->uid, now_time - thisplayer->online_time);
 
-    // Èç¹û³¬¹ı30Ãë£¬¾Í×Ô¶¯¶Ï¿ªÁ´½Ó
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½30ï¿½ë£¬ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½Ï¿ï¿½ï¿½ï¿½ï¿½ï¿½
     if (now_time - thisplayer->online_time <= 30000)
     {
       return false;
