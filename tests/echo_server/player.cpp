@@ -14,7 +14,7 @@ public:
 
   void UpdateHeartbeat() { this->online_time = getTimeStamp(); };
 
-  int64_t GetUid() { return this->uid; };
+  int64_t GetUid() const { return this->uid; };
 
   highp_time_t online_time;
   highp_time_t login_time;
@@ -67,7 +67,7 @@ void Player::Login(int64_t uid)
   this->login_time  = getTimeStamp();
   this->online_time = getTimeStamp();
 
-  printf("[client->%lld] %d login %lld\n", getTimeStamp(), this->id, this->uid);
+  printf("[client->%lld] %d login->uid %lld\n", getTimeStamp(), this->id, this->uid);
 
   auto th         = this->ib;
   auto thisplayer = this;

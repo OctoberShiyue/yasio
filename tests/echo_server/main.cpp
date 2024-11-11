@@ -9,6 +9,7 @@ using namespace yasio;
 io_service* gservice = nullptr; // the weak pointer
 
 std::map<int, Player*> gPlayers;
+std::map<int, bool> gPlayers_have_uid;
 
 cxx17::string_view gpasswd = "shiyue is a powerful!";
 
@@ -85,16 +86,18 @@ enum
   SERVER_LOGIN_SUCCESS = 3, // 登录成功
 };
 
-void RunFunc(io_event* ev, DataPacket* packet)
+bool RunFunc(io_event* ev, DataPacket* packet)
 {
   if (!packet->passwd._Equal(gpasswd))
-    return;
+    return false;
 
-  auto p = gPlayers[ev->transport()->id()];
+  auto tid = ev->transport()->id();
+
+  auto p = gPlayers[tid];
 
   if (packet->id != SERVER_LOGIN && p->GetUid() <= 10000)
   {
-    return;
+    return false;
   }
 
   switch (packet->id)
@@ -102,11 +105,12 @@ void RunFunc(io_event* ev, DataPacket* packet)
 
     case SERVER_LOGIN: {
       auto uid = packet->uid;
-      if (uid <= 10000)
+      if (uid <= 10000 || gPlayers_have_uid[uid])
       {
-        return;
+        return false;
       }
       p->Login(uid);
+      gPlayers_have_uid[uid] = true;
 
       DataPacket pd{};
 
@@ -125,6 +129,7 @@ void RunFunc(io_event* ev, DataPacket* packet)
       break;
     }
   }
+  return true;
 }
 
 void handle_signal(int sig)
@@ -173,7 +178,10 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
             try
             {
               DataPacket packet(ibs.get());
-              RunFunc(ev.get(), &packet);
+              if (!RunFunc(ev.get(), &packet))
+              {
+                gservice->close(ev->transport());
+              }
             }
             catch (const std::exception&)
             {
@@ -194,7 +202,11 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
       case YEK_CONNECTION_LOST: {
         auto id      = ev->transport()->id();
         auto p       = gPlayers[ev->transport()->id()];
+        auto uid     = p->GetUid();
         gPlayers[id] = nullptr;
+        if (gPlayers_have_uid[uid])
+          gPlayers_have_uid[uid] = false;
+
         delete p;
         break;
       }
