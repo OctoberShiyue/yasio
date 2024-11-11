@@ -1,9 +1,125 @@
 #include "yasio/yasio.hpp"
+#include "player.cpp"
 #include <signal.h>
+#include <map>
+#include <mysql/include/mysql.h>
 
 using namespace yasio;
 
 io_service* gservice = nullptr; // the weak pointer
+
+std::map<int, Player*> gPlayers;
+
+cxx17::string_view gpasswd = "shiyue is a powerful!";
+
+struct DataPacket {
+
+  struct Header {
+    uint16_t command_id;
+    uint16_t version;
+    int32_t reserved;
+    int32_t reserved2_low;
+    int32_t reserved2_high;
+  };
+  Header header;
+
+  int8_t id; // 信息
+  uint16_t value1;
+  int64_t value2;
+  bool value3;
+  float value4;
+  double value6;
+  int64_t uid;
+  cxx17::string_view data;
+  cxx17::string_view passwd = gpasswd;
+  DataPacket(){
+
+  };
+  DataPacket(yasio::ibstream* ibs)
+  {
+    ibs->seek(4, SEEK_CUR);
+    header.command_id     = ibs->read<uint16_t>();
+    header.version        = ibs->read<uint16_t>();
+    header.reserved       = ibs->read<int32_t>();
+    header.reserved2_low  = ibs->read<int32_t>();
+    header.reserved2_high = ibs->read<int32_t>();
+
+    id     = ibs->read<int8_t>();
+    value1 = ibs->read<uint16_t>();
+    value2 = ibs->read_ix<int64_t>();
+    value3 = ibs->read<bool>();
+    value4 = ibs->read<float>();
+    value6 = ibs->read<double>();
+    uid    = ibs->read_ix<int64_t>();
+    data   = ibs->read_v();
+    passwd = ibs->read_v();
+  }
+
+  void setObstream(yasio::obstream* obs)
+  {
+    auto len_pos = obs->push<uint32_t>();
+    obs->write<uint16_t>(101); // CID_SIMPLE1
+    obs->write<uint16_t>(1);
+    obs->write<int32_t>(0);
+    obs->write<int32_t>(0);
+    obs->write<int32_t>(0);
+
+    obs->write<int8_t>(id);
+    obs->write<uint16_t>(value1);
+    obs->write_ix<int64_t>(value2);
+    obs->write<bool>(value3);
+    obs->write<float>(value4);
+    obs->write<double>(value6);
+    obs->write_ix<int64_t>(uid);
+    obs->write_v(data);
+    obs->write_v(passwd);
+
+    obs->pop<uint32_t>(len_pos, obs->length());
+  }
+};
+
+enum
+{
+  SERVER_LOGIN     = 1, // 登录
+  SERVER_HEARTBEAT = 2, // 心跳
+};
+
+void RunFunc(io_event* ev, DataPacket* packet)
+{
+  if (!packet->passwd._Equal(gpasswd))
+    return;
+
+  switch (packet->id)
+  {
+
+    case SERVER_LOGIN: {
+      auto uid = packet->uid;
+      // printf("数据=%lld",uid);
+      if (uid <= 10000)
+      {
+        return;
+      }
+      gPlayers[ev->transport()->id()]->Login(uid);
+
+      DataPacket pd{};
+
+      pd.id     = 2;
+      pd.value1 = 996;
+      pd.data   = "test data!";
+
+      auto obs = cxx14::make_unique<yasio::obstream>();
+      pd.setObstream(obs.get());
+      gservice->write(ev->transport(), obs->data(), obs->length());
+
+      break;
+    }
+    case SERVER_HEARTBEAT: {
+      gPlayers[ev->transport()->id()]->UpdateHeartbeat();
+      break;
+    }
+  }
+}
+
 void handle_signal(int sig)
 {
   if (gservice && sig == 2)
@@ -27,7 +143,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
   deadline_timer timer(server);
   timer.expires_from_now(std::chrono::seconds(1));
   timer.async_wait_once([=](io_service& server) {
-    server.set_option(YOPT_C_UNPACK_PARAMS, 0, 65536, -1, 0, 0);
+    server.set_option(YOPT_C_UNPACK_PARAMS, 0, 65535, 0, 4, 0);
     printf("[%s] open server %s:%u ...\n", protocol, ip, port);
     if (cxx20::ic::iequals(protocol, "udp"))
       server.open(0, YCK_UDP_SERVER);
@@ -39,48 +155,58 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
   server.start([&](event_ptr ev) {
     switch (ev->kind())
     {
-      case YEK_ON_OPEN:
-        if (ev->passive())
+      case YEK_PACKET: {
+        if (ev->status() == 0)
         {
-          if (ev->status() == 0)
+          auto& pkt = ev->packet();
+          if (!pkt.empty())
           {
-            printf("[%lld] start server ok, status=%d\n", ev->timestamp(), ev->status());
-          }
-          else
-          {
-            printf("[%lld] start server failed, status=%d\n", ev->timestamp(), ev->status());
-          }
-          return;
-        }
-        printf("[%lld] A client is income, status=%d\n", ev->timestamp(), ev->status());
-      case YEK_ON_PACKET:
-        if (!ev->packet().empty())
-          server.write(ev->transport(), std::move(ev->packet()));
+            auto ibs = cxx14::make_unique<yasio::ibstream>(forward_packet((packet_t&&)pkt));
 
-        // kick out after 3(s) if no new packet income
-        {
-          timer.expires_from_now(std::chrono::seconds(3));
-          auto transport = ev->transport();
-          timer.async_wait_once([transport](io_service& server) { server.close(transport); });
+            try
+            {
+              DataPacket packet(ibs.get());
+              RunFunc(ev.get(), &packet);
+            }
+            catch (const std::exception&)
+            {
+              server.close(ev->transport());
+            }
+          }
         }
         break;
-      case YEK_ON_CLOSE:
-        if (ev->passive())
+      }
+      case YEK_CONNECT_RESPONSE: {
+        if (ev->status() == 0)
         {
-          printf("[%lld] stop server done, status=%d\n", ev->timestamp(), ev->status());
-          server.stop();      // stop could call self thread
-          gservice = nullptr; // service will stop, clear gservice weak pointer
+          auto p                          = new Player(gservice, ev->source());
+          gPlayers[ev->transport()->id()] = p;
         }
         break;
+      }
+      case YEK_CONNECTION_LOST: {
+        auto id      = ev->transport()->id();
+        auto p       = gPlayers[ev->transport()->id()];
+        gPlayers[id] = nullptr;
+        delete p;
+        break;
+      }
     }
   });
 }
 
 int main(int argc, char** argv)
 {
-  if (argc > 3)
-    run_echo_server(argv[1], atoi(argv[2]), argv[3]);
-  else 
-    printf("usage: ip port protocol(udp,kcp,tcp)\n");
+  MYSQL* mysql = mysql_init(nullptr);
+
+  if (nullptr == mysql_real_connect(mysql, "124.223.83.199", "testorpg", "mh4wabJCGnLMWH7E", "testorpg", 3306, nullptr, 0))
+  {
+    printf("数据库连接失败\n");
+    return 0;
+  }
+
+  printf("数据库连接成功!\n");
+
+  run_echo_server("0.0.0.0", 18199, "tcp");
   return 0;
 }
