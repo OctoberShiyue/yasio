@@ -19,6 +19,8 @@ public:
   highp_time_t online_time;
   highp_time_t login_time;
 
+  cxx17::string_view aes_key = "";
+
 private:
   unsigned int id;
   int64_t uid;
