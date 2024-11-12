@@ -32,8 +32,6 @@ file(GLOB ECHO_SERVER_SRC
     "${ECHO_SERVER_SRC_DIR}/lib/rsa/*.cpp"
     "${ECHO_SERVER_SRC_DIR}/lib/rsa/*.c"
     "${ECHO_SERVER_SRC_DIR}/lib/rsa/*.h"
-    "${ECHO_SERVER_SRC_DIR}/lib/aes/*.cpp"
-    "${ECHO_SERVER_SRC_DIR}/lib/aes/*.h"
 
     "${ECHO_SERVER_SRC_DIR}/lib/mysql/include/*.cpp"
     "${ECHO_SERVER_SRC_DIR}/lib/mysql/include/*.h"
