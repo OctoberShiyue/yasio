@@ -37,12 +37,7 @@ struct DataPacket {
   Header header;
 
   int8_t id; // 信息
-  uint16_t value1;
-  int64_t value2;
-  bool value3;
-  float value4;
-  double value6;
-  int64_t uid;
+
   nlohmann::json data;
 
   DataPacket(){
@@ -58,12 +53,6 @@ struct DataPacket {
     header.reserved2_high = ibs->read<int32_t>();
 
     id     = ibs->read<int8_t>();
-    value1 = ibs->read<uint16_t>();
-    value2 = ibs->read_ix<int64_t>();
-    value3 = ibs->read<bool>();
-    value4 = ibs->read<float>();
-    value6 = ibs->read<double>();
-
     data = nlohmann::json::parse(Base64::decode(ibs->read_v().data()));
   }
 
@@ -77,13 +66,7 @@ struct DataPacket {
     obs->write<int32_t>(0);
 
     obs->write<int8_t>(id);
-    obs->write<uint16_t>(value1);
-    obs->write_ix<int64_t>(value2);
-    obs->write<bool>(value3);
-    obs->write<float>(value4);
-    obs->write<double>(value6);
-    obs->write_ix<int64_t>(uid);
-    obs->write_v(data.dump());
+    obs->write_v(Base64::encode(data.dump()));
 
     obs->pop<uint32_t>(len_pos, obs->length());
   }
@@ -101,11 +84,13 @@ bool RunFunc(io_event* ev, DataPacket* packet)
     return false;
   }
 
+
+
   switch (packet->id)
   {
 
     case SERVER_LOGIN: {
-      auto uid = packet->uid;
+      auto uid = (int64_t)packet->data["uid"];
       if (uid <= 10000 || gPlayers_have_uid[uid])
       {
         return false;
@@ -116,8 +101,10 @@ bool RunFunc(io_event* ev, DataPacket* packet)
       DataPacket pd{};
 
       pd.id     = SERVER_LOGIN_SUCCESS;
-      pd.value1 = 996;
-      pd.data   = "test data!";
+      nlohmann::json njson;
+      njson["value1"] = 9993;
+      njson["pw"]     = "38d831ce827d35ba71fa0d19cea25577";
+      pd.data = njson;
 
       auto obs = cxx14::make_unique<yasio::obstream>();
       pd.setObstream(obs.get());
