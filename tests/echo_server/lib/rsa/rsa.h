@@ -4,11 +4,11 @@
 
 class BigInt;
 
-class RSA
+class RSA7
 {
 public:
-	RSA();
-	~RSA();
+	RSA7();
+	~RSA7();
 
 	//…Ë÷√÷∏ ˝e
 	void set_public_exp(const std::string& hex);

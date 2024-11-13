@@ -49,6 +49,7 @@ add_executable (${target_name} ${ECHO_SERVER_SRC})
 target_link_libraries(${target_name}
     "${ECHO_SERVER_SRC_DIR}/lib/mysql/libmysql.lib"
     "${ECHO_SERVER_SRC_DIR}/lib/mysql/mysqlclient.lib"
+    "Crypt32.lib"
 )
 
 yasio_config_app_depends(${target_name})

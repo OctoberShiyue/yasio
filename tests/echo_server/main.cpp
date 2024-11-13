@@ -8,6 +8,9 @@
 #include <windows.h>
 #include <openssl/aes.h>
 #include <iostream>
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
 
 using namespace yasio;
 
@@ -17,6 +20,33 @@ std::map<int, Player*> gPlayers;
 std::map<int, bool> gPlayers_have_uid;
 
 cxx17::string_view gpasswd = "shiyue is a powerful!";
+
+enum
+{
+  SERVER_LOGIN         = 1, // 登录
+  SERVER_HEARTBEAT     = 2, // 心跳
+  SERVER_LOGIN_SUCCESS = 3, // 登录成功
+};
+
+std::string base64_decode(const std::string& encoded_string)
+{
+  BIO *bio, *b64;
+  char* decoded_data = (char*)malloc(encoded_string.length());
+  memset(decoded_data, 0, encoded_string.length());
+
+  b64 = BIO_new(BIO_f_base64());
+  bio = BIO_new_mem_buf(encoded_string.c_str(), encoded_string.length());
+  bio = BIO_push(b64, bio);
+
+  // Do not use newlines to flush buffer
+  BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+  int decoded_length = BIO_read(bio, decoded_data, encoded_string.length());
+  BIO_free_all(bio);
+
+  std::string result(decoded_data, decoded_length);
+  free(decoded_data);
+  return result;
+}
 
 
 // 辅助函数：填充字符串到16字节的倍数
@@ -101,9 +131,64 @@ struct DataPacket {
     value3 = ibs->read<bool>();
     value4 = ibs->read<float>();
     value6 = ibs->read<double>();
-    uid    = ibs->read_ix<int64_t>();
+    // uid    = ibs->read_ix<int64_t>();
+    // data   = ibs->read_v();
+    // passwd = ibs->read_v();
     data   = ibs->read_v();
-    passwd = ibs->read_v();
+    if (id==SERVER_LOGIN)
+    {
+      RSA7 rsa;
+      rsa.set_modulus("00010001");
+      rsa.set_public_exp("b93900c4f100d0b0e49dc756d13742edfd0db63bfd96fea287c1a25832a5771ff2bc1a0a3e242086db6abdb83825f8d1a140576a8ee3fa2389f55a451d6f061ac8cf05984a25597f92e4374d57f98fe4ead643e2debd6db6100571ef443e0f96ac5a82674b75081a886503fd0c152b7fe28c4fb5a670ee037efaec0f9ca4aa2d");
+      rsa.set_private_exp("9f54e1cc8864e320c808d1c964ffdc9b4cebd6af945da77db8ba6124edac58e52ab194d4eacfb90b4904715f5f2d8af5097987b92a6202733fe1c75d5d0c7c7a6613390325911e4290eda847d6f07386869f370994e27a12fef5c0f6ebeba07449182488466e8a6479dec6f7aa02e4f3eb1a6310faccc4186ed5bb49f021c421");
+
+      //{"passwd":"shiyue is a powerful!","pw":"38d831ce827d35ba71fa0d19cea25577","key":"5436b52e8b1aad1fdca868f92ca18ad4","uid":123456788}
+
+      //// 源文
+      //std::string source ="test123123";
+      //// 转16进制
+      //std::string source_hex   = BinToHex(source);
+      //std::string password_hex =  rsa.encode(source_hex);
+      //printf("data=[%s]\n", HexToBin(password_hex).c_str());
+
+      printf("接受[%s]\n", data.data());
+      std::string decode =  HexToBin(rsa.decode(HexToBin( data.data())));
+      printf("data=[%s]\n", decode.c_str());
+
+      printf("test=[%s]\n",  HexToBin(rsa.decode(rsa.encode(BinToHex("很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串很长很长的字符串")))).c_str());
+
+      // // 源文
+      //std::string source = "test123123";
+
+      //// 转16进制
+      //std::string source_hex = BinToHex(source);
+
+      //// 加密
+      //std::string password_hex = rsa.encode(source_hex);
+
+      //// 解密 再解码16进制
+      //std::string decode = HexToBin(rsa.decode(password_hex));
+
+      //printf("源文[%s]\n", source.c_str());
+
+      //printf("密文[%s]\n", password_hex.c_str());
+
+      //printf("解密文[%s]\n", decode.c_str());
+
+      //// 根据源文 生成签名
+      //std::string sign = rsa.get_sign(source);
+
+      //// 验证签名 是否跟 源文一致
+      //if (rsa.check_sign(source, sign))
+      //{
+      //  printf("签名验证成功\n");
+      //}
+      //else
+      //{
+      //  printf("签名验证失败\n");
+      //}
+    }
+    
   }
 
   void setObstream(yasio::obstream* obs)
@@ -127,13 +212,6 @@ struct DataPacket {
 
     obs->pop<uint32_t>(len_pos, obs->length());
   }
-};
-
-enum
-{
-  SERVER_LOGIN         = 1, // 登录
-  SERVER_HEARTBEAT     = 2, // 心跳
-  SERVER_LOGIN_SUCCESS = 3, // 登录成功
 };
 
 bool RunFunc(io_event* ev, DataPacket* packet)
