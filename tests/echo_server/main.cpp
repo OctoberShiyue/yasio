@@ -16,8 +16,6 @@ io_service* gservice = nullptr; // the weak pointer
 std::map<int, Player*> gPlayers;
 std::map<int, bool> gPlayers_have_uid;
 
-cxx17::string_view gpasswd = "shiyue is a powerful!";
-
 enum
 {
   SERVER_LOGIN         = 1, // 登录
