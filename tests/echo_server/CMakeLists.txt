@@ -2,7 +2,6 @@ set(target_name echo_server)
 
 set (ECHO_SERVER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set (ECHO_SERVER_INC_DIR 
-    ${ECHO_SERVER_SRC_DIR}/../../
     ${ECHO_SERVER_SRC_DIR}/lib
 )
 
@@ -33,6 +32,8 @@ target_link_libraries(${target_name}
     "${ECHO_SERVER_SRC_DIR}/lib/mysql/libmysql.lib"
     "${ECHO_SERVER_SRC_DIR}/lib/mysql/mysqlclient.lib"
     "Crypt32.lib"
+    "${ECHO_SERVER_SRC_DIR}/lib/lua54/lua54.lib"
+
 )
 
 yasio_config_app_depends(${target_name})

@@ -7,6 +7,8 @@
 #include <base64/base64.h>
 #include <json/json.hpp>
 #include <connectionPool.h>
+#include <lua54/lua.hpp>
+
 
 using namespace yasio;
 
@@ -162,7 +164,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
   });
 
   gservice->schedule(std::chrono::milliseconds(60000), [=](io_service& service) {
-    printf("[msg->%lld]player_num=%d\n", getTimeStamp()/1000, gPlayerNum);
+    printf("[msg->%lld]player_num=%d\n", getTimeStamp() / 1000, gPlayerNum);
     return false;
   });
 
@@ -175,7 +177,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
           auto& pkt = ev->packet();
           if (!pkt.empty())
           {
-            auto ibs = cxx14::make_unique<yasio::ibstream>(forward_packet((packet_t&&)pkt));
+            auto ibs = cxx14::make_unique<yasio::ibstream>(forward_packet((packet_t &&) pkt));
 
             try
             {
@@ -223,13 +225,22 @@ int main(int argc, char** argv)
   // 设置控制台输出为 UTF-8 编码
   SetConsoleOutputCP(CP_UTF8);
 
-  gmysql_pool = new ConnectionPool("127.0.0.1", "root", "root", "testorpg", 3306,
+  gmysql_pool = new ConnectionPool("127.0.0.1", "root", "Aa1023261581", "testorpg", 3306,
+  // gmysql_pool = new ConnectionPool("127.0.0.1", "root", "Aa1023261581", "testorpg", 3306,
 #ifdef NDEBUG
                                    10
 #else
                                    1
 #endif
   );
+  lua_State* L = luaL_newstate(); // 创建一个新的 Lua 状态
+  luaL_openlibs(L);               // 打开 Lua 库
+  if (luaL_dofile(L, "main.lua"))
+  {
+    // 如果加载或执行脚本时出错，输出错误信息
+    fprintf(stderr, "Error: %s\n", lua_tostring(L, -1));
+    lua_pop(L, 1); // 从栈中移除错误消息
+  }
 
   run_echo_server("0.0.0.0", 18199, "tcp");
   return 0;
