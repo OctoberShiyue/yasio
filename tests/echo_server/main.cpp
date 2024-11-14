@@ -243,5 +243,11 @@ int main(int argc, char** argv)
   }
 
   run_echo_server("0.0.0.0", 18199, "tcp");
+
+  //main一个线程
+  //服务端一个线程
+  //lua一个线程
+
+
   return 0;
 }
