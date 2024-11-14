@@ -2,16 +2,16 @@
 #include "player.h"
 #include <signal.h>
 #include <map>
-#include <mysql/include/mysql.h>
 #include <windows.h>
 #include <iostream>
 #include <base64/base64.h>
 #include <json/json.hpp>
-
+#include <connectionPool.h>
 
 using namespace yasio;
 
-io_service* gservice = nullptr; // the weak pointer
+io_service* gservice        = nullptr; // the weak pointer
+ConnectionPool* gmysql_pool = nullptr;
 
 std::map<int, Player*> gPlayers;
 std::map<int, bool> gPlayers_have_uid;
@@ -50,7 +50,7 @@ struct DataPacket {
     header.reserved2_low  = ibs->read<int32_t>();
     header.reserved2_high = ibs->read<int32_t>();
 
-    id     = ibs->read<int8_t>();
+    id   = ibs->read<int8_t>();
     data = nlohmann::json::parse(Base64::decode(ibs->read_v().data()));
   }
 
@@ -82,8 +82,6 @@ bool RunFunc(io_event* ev, DataPacket* packet)
     return false;
   }
 
-
-
   switch (packet->id)
   {
 
@@ -98,11 +96,11 @@ bool RunFunc(io_event* ev, DataPacket* packet)
 
       DataPacket pd{};
 
-      pd.id     = SERVER_LOGIN_SUCCESS;
+      pd.id = SERVER_LOGIN_SUCCESS;
       nlohmann::json njson;
       njson["value1"] = 9993;
       njson["pw"]     = "38d831ce827d35ba71fa0d19cea25577";
-      pd.data = njson;
+      pd.data         = njson;
 
       auto obs = cxx14::make_unique<yasio::obstream>();
       pd.setObstream(obs.get());
@@ -112,6 +110,16 @@ bool RunFunc(io_event* ev, DataPacket* packet)
     }
     case SERVER_HEARTBEAT: {
       p->UpdateHeartbeat();
+
+      MYSQL_ROW row;
+      gmysql_pool->query(row, "SELECT '111Hello, World!' AS _message");
+      std::cout << "MySQL replies: " << row[0] << "\n";
+      // 获取当前线程的 ID
+      std::thread::id this_id = std::this_thread::get_id();
+
+      // 输出线程 ID
+      std::cout << "Current thread ID: " << this_id << std::endl;
+
       break;
     }
   }
@@ -159,7 +167,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
           auto& pkt = ev->packet();
           if (!pkt.empty())
           {
-            auto ibs = cxx14::make_unique<yasio::ibstream>(forward_packet((packet_t&&)pkt));
+            auto ibs = cxx14::make_unique<yasio::ibstream>(forward_packet((packet_t &&) pkt));
 
             try
             {
@@ -204,15 +212,14 @@ int main(int argc, char** argv)
 {
   // 设置控制台输出为 UTF-8 编码
   SetConsoleOutputCP(CP_UTF8);
-  MYSQL* mysql = mysql_init(nullptr);
 
-  if (nullptr == mysql_real_connect(mysql, "124.223.83.199", "testorpg", "mh4wabJCGnLMWH7E", "testorpg", 3306, nullptr, 0))
-  {
-    printf("[mysql] connect fail\n");
-    return 0;
-  }
-
-  printf("[mysql] connect success\n");
+  gmysql_pool = new ConnectionPool("124.223.83.199", "testorpg", "mh4wabJCGnLMWH7E", "testorpg", 3306,
+#ifdef NDEBUG
+                                   50
+#else
+                                   1
+#endif
+  );
 
   run_echo_server("0.0.0.0", 18199, "tcp");
   return 0;
