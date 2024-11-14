@@ -3,6 +3,7 @@
 
 #include "yasio/yasio.hpp"
 #include <signal.h>
+#include <connectionPool.h>
 
 using namespace yasio;
 
@@ -10,10 +11,10 @@ static yasio::highp_time_t getTimeStamp() { return yasio::highp_clock<yasio::sys
 
 class Player {
 public:
-  Player(io_service* service, io_base* th);
+  Player(io_service* service, io_base* th, ConnectionPool* mysql_pool);
   ~Player();
 
-  void Login(int64_t uid);
+  bool Login(int64_t uid, std::string pass);
 
   void UpdateHeartbeat() { this->online_time = getTimeStamp(); };
 
@@ -22,7 +23,9 @@ public:
   highp_time_t online_time;
   highp_time_t login_time;
 
-  cxx17::string_view aes_key = "";
+  std::string pass = "";
+
+  ConnectionPool* mysql_pool;
 
 private:
   unsigned int id;

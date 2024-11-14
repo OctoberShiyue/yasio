@@ -49,12 +49,10 @@ void ConnectionPool::query(MYSQL_ROW& row, const std::string& sql)
     releaseConnection(conn);
     return;
   }
-  // 模拟查询耗时（例如，模拟查询耗时3秒）
-  //std::this_thread::sleep_for(std::chrono::seconds(10));
   MYSQL_RES* res = mysql_store_result(conn);
   if (res == NULL)
   {
-    printf("[mysql->error] failed: %s \n", mysql_error(conn));
+    //printf("[mysql->error] failed: %s \n", mysql_error(conn));
     releaseConnection(conn);
     return;
   }

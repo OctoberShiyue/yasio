@@ -16,6 +16,8 @@ ConnectionPool* gmysql_pool = nullptr;
 std::map<int, Player*> gPlayers;
 std::map<int, bool> gPlayers_have_uid;
 
+int gPlayerNum = 0;
+
 enum
 {
   SERVER_LOGIN         = 1, // 登录
@@ -91,7 +93,18 @@ bool RunFunc(io_event* ev, DataPacket* packet)
       {
         return false;
       }
-      p->Login(uid);
+      //// 获取开始时间点
+      // auto start = std::chrono::high_resolution_clock::now();
+      if (!p->Login(uid, (std::string)packet->data["pw"]))
+      {
+        return false;
+      }
+      // 获取结束时间点
+      auto end = std::chrono::high_resolution_clock::now();
+
+      //// 计算耗时
+      // std::chrono::duration<double> elapsed = end - start;
+      // std::cout << "Elapsed time: " << elapsed.count() << " seconds" << std::endl;
       gPlayers_have_uid[uid] = true;
 
       DataPacket pd{};
@@ -99,7 +112,7 @@ bool RunFunc(io_event* ev, DataPacket* packet)
       pd.id = SERVER_LOGIN_SUCCESS;
       nlohmann::json njson;
       njson["value1"] = 9993;
-      njson["pw"]     = "38d831ce827d35ba71fa0d19cea25577";
+      njson["pw"]     = p->pass.data();
       pd.data         = njson;
 
       auto obs = cxx14::make_unique<yasio::obstream>();
@@ -110,16 +123,6 @@ bool RunFunc(io_event* ev, DataPacket* packet)
     }
     case SERVER_HEARTBEAT: {
       p->UpdateHeartbeat();
-
-      MYSQL_ROW row;
-      gmysql_pool->query(row, "SELECT '111Hello, World!' AS _message");
-      std::cout << "MySQL replies: " << row[0] << "\n";
-      // 获取当前线程的 ID
-      std::thread::id this_id = std::this_thread::get_id();
-
-      // 输出线程 ID
-      std::cout << "Current thread ID: " << this_id << std::endl;
-
       break;
     }
   }
@@ -158,6 +161,11 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
       server.open(0, YCK_TCP_SERVER);
   });
 
+  gservice->schedule(std::chrono::milliseconds(60000), [=](io_service& service) {
+    printf("[msg->%lld]player_num=%d\n", getTimeStamp()/1000, gPlayerNum);
+    return false;
+  });
+
   server.start([&](event_ptr ev) {
     switch (ev->kind())
     {
@@ -167,7 +175,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
           auto& pkt = ev->packet();
           if (!pkt.empty())
           {
-            auto ibs = cxx14::make_unique<yasio::ibstream>(forward_packet((packet_t &&) pkt));
+            auto ibs = cxx14::make_unique<yasio::ibstream>(forward_packet((packet_t&&)pkt));
 
             try
             {
@@ -188,8 +196,9 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
       case YEK_CONNECT_RESPONSE: {
         if (ev->status() == 0)
         {
-          auto p                          = new Player(gservice, ev->source());
+          auto p                          = new Player(gservice, ev->source(), gmysql_pool);
           gPlayers[ev->transport()->id()] = p;
+          gPlayerNum++;
         }
         break;
       }
@@ -202,6 +211,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
           gPlayers_have_uid[uid] = false;
 
         delete p;
+        gPlayerNum--;
         break;
       }
     }
@@ -213,9 +223,9 @@ int main(int argc, char** argv)
   // 设置控制台输出为 UTF-8 编码
   SetConsoleOutputCP(CP_UTF8);
 
-  gmysql_pool = new ConnectionPool("124.223.83.199", "testorpg", "mh4wabJCGnLMWH7E", "testorpg", 3306,
+  gmysql_pool = new ConnectionPool("127.0.0.1", "root", "root", "testorpg", 3306,
 #ifdef NDEBUG
-                                   50
+                                   10
 #else
                                    1
 #endif
