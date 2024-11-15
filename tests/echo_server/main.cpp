@@ -9,7 +9,6 @@
 #include <connectionPool.h>
 #include <lua54/lua.hpp>
 
-
 using namespace yasio;
 
 io_service* gservice        = nullptr; // the weak pointer
@@ -95,31 +94,30 @@ bool RunFunc(io_event* ev, DataPacket* packet)
       {
         return false;
       }
-      //// 获取开始时间点
-      // auto start = std::chrono::high_resolution_clock::now();
-      if (!p->Login(uid, (std::string)packet->data["pw"]))
-      {
-        return false;
-      }
-      // 获取结束时间点
-      auto end = std::chrono::high_resolution_clock::now();
 
-      //// 计算耗时
-      // std::chrono::duration<double> elapsed = end - start;
-      // std::cout << "Elapsed time: " << elapsed.count() << " seconds" << std::endl;
-      gPlayers_have_uid[uid] = true;
+      p->Login(uid, (std::string)packet->data["pw"], [=](bool b) {
+        if (!b)
+        {
+          gservice->close(p->GetTransport());
+          return;
+        }
+        // 获取结束时间点
+        auto end = std::chrono::high_resolution_clock::now();
 
-      DataPacket pd{};
+        gPlayers_have_uid[uid] = true;
 
-      pd.id = SERVER_LOGIN_SUCCESS;
-      nlohmann::json njson;
-      njson["value1"] = 9993;
-      njson["pw"]     = p->pass.data();
-      pd.data         = njson;
+        DataPacket pd{};
 
-      auto obs = cxx14::make_unique<yasio::obstream>();
-      pd.setObstream(obs.get());
-      gservice->write(ev->transport(), obs->data(), obs->length());
+        pd.id = SERVER_LOGIN_SUCCESS;
+        nlohmann::json njson;
+        njson["value1"] = 9993;
+        njson["pw"]     = p->pass.data();
+        pd.data         = njson;
+
+        auto obs = cxx14::make_unique<yasio::obstream>();
+        pd.setObstream(obs.get());
+        gservice->write(p->GetTransport(), obs->data(), obs->length());
+      });
 
       break;
     }
@@ -144,7 +142,8 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
 {
   io_hostent endpoints[] = {{ip, port}};
   io_service server(endpoints, 1);
-  gservice = &server;
+  gservice    = &server;
+  gmysql_pool = new ConnectionPool("127.0.0.1", "root", "Aa1023261581", "testorpg", 3306, gservice);
   server.set_option(YOPT_S_NO_NEW_THREAD, 1);
   server.set_option(YOPT_C_MOD_FLAGS, 0, YCF_REUSEADDR, 0);
 
@@ -225,14 +224,6 @@ int main(int argc, char** argv)
   // 设置控制台输出为 UTF-8 编码
   SetConsoleOutputCP(CP_UTF8);
 
-  gmysql_pool = new ConnectionPool("127.0.0.1", "root", "Aa1023261581", "testorpg", 3306,
-  // gmysql_pool = new ConnectionPool("127.0.0.1", "root", "Aa1023261581", "testorpg", 3306,
-#ifdef NDEBUG
-                                   10
-#else
-                                   1
-#endif
-  );
   lua_State* L = luaL_newstate(); // 创建一个新的 Lua 状态
   luaL_openlibs(L);               // 打开 Lua 库
   if (luaL_dofile(L, "main.lua"))
@@ -241,13 +232,14 @@ int main(int argc, char** argv)
     fprintf(stderr, "Error: %s\n", lua_tostring(L, -1));
     lua_pop(L, 1); // 从栈中移除错误消息
   }
+  std::thread::id this_id = std::this_thread::get_id();
 
   run_echo_server("0.0.0.0", 18199, "tcp");
 
-  //main一个线程
-  //服务端一个线程
-  //lua一个线程
-
+  // main一个线程
+  // 服务端,lua一个线程【完成】
+  // lua需要重启，和执行lua代码功能
+  // 数据库查询一个线程【完成】
 
   return 0;
 }

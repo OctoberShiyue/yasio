@@ -1,35 +1,29 @@
 #ifndef _CONNECTIONPOOL_H_
 #define _CONNECTIONPOOL_H_
 
-#include <queue>
+#include "yasio/yasio.hpp"
 #include <mutex>
 #include <condition_variable>
 #include <mysql/include/mysql.h>
+#include <functional>
+#include <thread>
+#include <queue>
+#include <future>
+
+using namespace yasio;
 
 class ConnectionPool {
 public:
-  ConnectionPool(const std::string& url, const std::string& user, const std::string& password, const std::string& db, int port, int maxSize);
+  ConnectionPool(const std::string& url, const std::string& user, const std::string& password, const std::string& db, int port, io_service* gservice);
   ~ConnectionPool();
 
-  MYSQL* getConnection();
+  void query(const std::string& sql, std::function<void(std::vector<std::string>&)> row_cb_f);
+  std::string url, user, password, db;
+  int port;
 
-  void releaseConnection(MYSQL* con);
-
-  void query(MYSQL_ROW &row,const std::string& sql);
+  io_service* service;
 
 private:
-  MYSQL* createConnection()
-  {
-    MYSQL* mysql = mysql_init(nullptr);
-    return mysql_real_connect(mysql, url.c_str(), user.c_str(), password.c_str(), db.c_str(), port, nullptr, 0);
-  }
-
-  std::queue<MYSQL*> connections;
-  std::mutex mtx;
-  std::condition_variable cond;
-  std::string url, user, password,db;
-  int port;
-  int maxSize;
 };
 
 #endif
