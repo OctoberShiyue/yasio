@@ -238,7 +238,7 @@ int main(int argc, char** argv)
 
   // main一个线程
   // 服务端,lua一个线程【完成】
-  // lua需要重启，和执行lua代码功能
+  // lua需要重启，和执行lua代码功能，需要封装，计时器/发送数据/执行sql/接受数据
   // 数据库查询一个线程【完成】
 
   return 0;
