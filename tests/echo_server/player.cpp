@@ -26,6 +26,9 @@ Player::~Player()
   this->heartbeat_time = nullptr;
   this->ib             = nullptr;
   this->onetime        = nullptr;
+  this->service        = nullptr;
+  this->mysql_pool     = nullptr;
+  this->pass.clear();
 
   printf("[client->%lld] %d disconnect\n", getTimeStamp(), this->id);
 }
@@ -36,7 +39,7 @@ void Player::LoginSucces(std::function<void(bool&)> b_cb_f)
   // 更新在线时间
   mysql_pool->query("update `user` set `login_time`=" + std::to_string(login_time) + ",`online_time`=" + std::to_string(login_time) +
                         " where `uid`=" + std::to_string(uid),
-                    [=](std::vector<std::string> data) {});
+                    [=](std::vector<std::string>& data) {});
 
   printf("[client->%lld] %d login->uid %lld\n", getTimeStamp(), this->id, this->uid);
 
@@ -49,7 +52,7 @@ void Player::LoginSucces(std::function<void(bool&)> b_cb_f)
 
     // 更新在线时间
     thmysql_pool->query("update `user` set `online_time`=" + std::to_string(now_time / 1000) + " where `uid`=" + std::to_string(uid),
-                        [=](std::vector<std::string> data) {});
+                        [=](std::vector<std::string>& data) {});
 
     if (now_time - thisplayer->online_time <= 30000)
     {
@@ -82,7 +85,7 @@ void Player::Login(int64_t uid, std::string pass, std::function<void(bool&)> b_c
       mysql_pool->query("INSERT INTO `user`(uid, reg_time, login_time, online_time, pass)VALUES(" + std::to_string(uid) + "," +
                             std::to_string(this->login_time) + "," + std::to_string(this->login_time) + "," + std::to_string(this->online_time) + ",'" +
                             pass.data() + "')",
-                        [=](std::vector<std::string> data) { this->LoginSucces(b_cb_f); });
+                        [=](std::vector<std::string>& data) { this->LoginSucces(b_cb_f); });
       return;
     }
     else if (data[0] != pass) // 密码不对，退出登录

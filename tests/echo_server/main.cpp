@@ -117,6 +117,8 @@ bool RunFunc(io_event* ev, DataPacket* packet)
         auto obs = cxx14::make_unique<yasio::obstream>();
         pd.setObstream(obs.get());
         gservice->write(p->GetTransport(), obs->data(), obs->length());
+        obs->clear();
+        obs = nullptr;
       });
 
       break;
@@ -190,6 +192,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
             {
               server.close(ev->transport());
             }
+            ibs = nullptr;
           }
         }
         break;

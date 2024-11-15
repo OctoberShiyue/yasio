@@ -21,7 +21,7 @@ ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, 
 
   // 创建线程不停队列处理sql请求
   std::thread(
-      [](const std::string url, const std::string user, const std::string password, const std::string db, int port) {
+      [](const std::string& url, const std::string& user, const std::string& password, const std::string& db, int port) {
         while (true)
         {
           std::unique_lock<std::mutex> lock(mtx);
@@ -31,7 +31,7 @@ ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, 
           messages.pop();                      // 从队列中移除消息
 
           bool b = true;
-          // 开始连接数据库
+          //// 开始连接数据库
           MYSQL* conn = mysql_init(nullptr);
           mysql_real_connect(conn, url.c_str(), user.c_str(), password.c_str(), db.c_str(), port, nullptr, 0);
           if (b && conn == NULL)
@@ -70,12 +70,13 @@ ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, 
             }
 
             mysql_free_result(res);
+            res = nullptr;
+            row = nullptr;
           }
 
-          if (b)
-          {
-            mysql_close(conn);
-          }
+          mysql_close(conn);
+          conn = nullptr;
+
           messages_main.push(d); // 向队列中添加消息
           lock.unlock();         // 解锁以允许其他线程访问队列
         }
