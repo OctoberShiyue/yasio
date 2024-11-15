@@ -14,6 +14,8 @@ public:
   Player(io_service* service, io_base* th, ConnectionPool* mysql_pool);
   ~Player();
 
+  void LoginSucces(std::function<void(bool&)> b_cb_f);
+
   void Login(int64_t uid, std::string pass, std::function<void(bool&)> b_cb_f);
 
   void UpdateHeartbeat() { this->online_time = getTimeStamp(); };

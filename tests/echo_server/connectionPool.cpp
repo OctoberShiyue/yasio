@@ -50,7 +50,7 @@ ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, 
           MYSQL_RES* res = mysql_store_result(conn);
           if (b && res == NULL)
           {
-            //printf("[mysql->error] query failed: %s\n", mysql_error(conn));
+            // printf("[mysql->error] query failed: %s\n", mysql_error(conn));
             b = false;
           }
 
@@ -60,10 +60,15 @@ ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, 
             // 获取字段数量
             int num_fields = mysql_num_fields(res);
             row            = mysql_fetch_row(res);
-            for (int i = 0; i < num_fields; i++)
+            if (row != NULL)
             {
-              d.data.push_back(((std::string)row[i]));
+              for (int i = 0; i < num_fields; i++)
+              {
+
+                d.data.push_back(((std::string)row[i]));
+              }
             }
+
             mysql_free_result(res);
           }
 
