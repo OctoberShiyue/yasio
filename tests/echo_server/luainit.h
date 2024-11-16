@@ -6,6 +6,7 @@
 #include <connectionPool.h>
 #include <lua54/lua.hpp>
 #include <player.h>
+#include <datapacket.h>
 
 using namespace yasio;
 
@@ -13,6 +14,8 @@ class LuaInit {
 public:
   LuaInit(io_service* service, ConnectionPool* mysql_pool, std::map<int, Player*>* Players);
   ~LuaInit();
+
+  void notifyConnent(int connent_type, Player* p, DataPacket* packet );
 
   void luaregister(lua_State* L);
 

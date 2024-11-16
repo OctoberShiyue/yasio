@@ -21,7 +21,7 @@ std::map<int, bool> gPlayers_have_uid;
 
 int gPlayerNum = 0;
 
-static bool RunFunc(io_event* ev, DataPacket* packet)
+ bool RunFunc(io_event* ev, DataPacket* packet)
 {
 
   auto tid = ev->transport()->id();
@@ -42,6 +42,7 @@ static bool RunFunc(io_event* ev, DataPacket* packet)
       {
         return false;
       }
+      gPlayers_have_uid[uid] = true;
 
       p->Login(uid, (std::string)packet->data["pw"], [=](bool b) {
         if (!b)
@@ -49,24 +50,7 @@ static bool RunFunc(io_event* ev, DataPacket* packet)
           gservice->close(p->GetTransport());
           return;
         }
-        // 获取结束时间点
-        auto end = std::chrono::high_resolution_clock::now();
-
-        gPlayers_have_uid[uid] = true;
-
-        /* DataPacket pd{};
-
-         pd.id = SERVER_LOGIN_SUCCESS;
-         nlohmann::json njson;
-         njson["value1"] = 9993;
-         njson["pw"]     = p->pass.data();
-         pd.data         = njson;
-
-         auto obs = cxx14::make_unique<yasio::obstream>();
-         pd.setObstream(obs.get());
-         gservice->write(p->GetTransport(), obs->data(), obs->length());
-         obs->clear();
-         obs = nullptr;*/
+        gluainit->notifyConnent(1, p,nullptr);
       });
 
       break;
@@ -75,11 +59,14 @@ static bool RunFunc(io_event* ev, DataPacket* packet)
       p->UpdateHeartbeat();
       break;
     }
+    default: {
+      gluainit->notifyConnent(packet->id, p, packet);
+    }
   }
   return true;
 }
 
-static void handle_signal(int sig)
+ void handle_signal(int sig)
 {
   if (gservice && sig == 2)
   {
@@ -88,7 +75,7 @@ static void handle_signal(int sig)
 }
 
 // 6: TCP server, 10: UDP server, 26: KCP server
-static void run_echo_server(const char* ip, u_short port, const char* protocol)
+ void run_echo_server(const char* ip, u_short port, const char* protocol)
 {
   io_hostent endpoints[] = {{ip, port}};
   io_service server(endpoints, 1);
@@ -157,8 +144,9 @@ static void run_echo_server(const char* ip, u_short port, const char* protocol)
         break;
       }
       case YEK_CONNECTION_LOST: {
-        auto id      = ev->transport()->id();
-        auto p       = gPlayers[ev->transport()->id()];
+        auto id = ev->transport()->id();
+        auto p  = gPlayers[id];
+        gluainit->notifyConnent(0, p,nullptr);
         auto uid     = p->GetUid();
         gPlayers[id] = nullptr;
         if (gPlayers_have_uid[uid])

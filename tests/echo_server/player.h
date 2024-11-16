@@ -23,6 +23,7 @@ public:
   transport_handle_t GetTransport() { return (transport_handle_t)this->ib; };
 
   int64_t GetUid() const { return this->uid; };
+  unsigned int GetId() const { return this->id; };
 
   highp_time_t online_time;
   highp_time_t login_time;
@@ -32,14 +33,14 @@ public:
   ConnectionPool* mysql_pool;
 
 private:
-  unsigned int id;
-  int64_t uid;
+  unsigned int id = 0;
+  int64_t uid     = 0;
 
-  io_base* ib;
-  io_service* service;
+  io_base* ib         = nullptr;
+  io_service* service = nullptr;
 
-  deadline_timer_ptr onetime;
+  deadline_timer_ptr onetime = 0;
 
-  deadline_timer_ptr heartbeat_time;
+  deadline_timer_ptr heartbeat_time = 0;
 };
 #endif

@@ -40,7 +40,7 @@ struct DataPacket {
     header.reserved2_high = ibs->read<int32_t>();
 
     id   = ibs->read<int8_t>();
-    data = nlohmann::json::parse(Base64::decode(ibs->read_v().data()));
+    data = nlohmann::json::parse(Base64::decode(ibs->read_v().data()).c_str());
   }
 
   void setObstream(yasio::obstream* obs)
