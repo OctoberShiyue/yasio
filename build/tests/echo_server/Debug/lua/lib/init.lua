@@ -1,0 +1,2 @@
+
+json = require 'lib.json'
