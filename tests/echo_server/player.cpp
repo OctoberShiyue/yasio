@@ -1,10 +1,10 @@
 #include <player.h>
 #include <iostream>
 
-Player::Player(io_service* service, io_base* th, ConnectionPool* mysql_pool)
+Player::Player(io_service* service, io_base* th, ConnectionPool* mysql_pool, unsigned int id)
 {
   this->ib         = th;
-  this->id         = th->id();
+  this->id         = id;
   this->service    = service;
   this->mysql_pool = mysql_pool;
   printf("[client->%lld] %d connect\n", getTimeStamp(), this->id);

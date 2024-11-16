@@ -83,7 +83,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
   io_hostent endpoints[] = {{ip, port}};
   io_service server(endpoints, 1);
   gservice    = &server;
-  gmysql_pool = new ConnectionPool("127.0.0.1", "root", "Aa1023261581", "testorpg", 3306, gservice);
+  gmysql_pool = new ConnectionPool("127.0.0.1", "root", "root", "testorpg", 3306, gservice);
   gluainit    = new LuaInit(gservice, gmysql_pool, &gPlayers);
 
   server.set_option(YOPT_S_NO_NEW_THREAD, 1);
@@ -142,17 +142,15 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
       case YEK_CONNECT_RESPONSE: {
         if (ev->status() == 0)
         {
-          auto p                          = new Player(gservice, ev->source(), gmysql_pool);
-          gPlayers[ev->source()->id()] = p;
+          auto p                    = new Player(gservice, ev->source(), gmysql_pool, ev->source_id());
+          gPlayers[ev->source_id()] = p;
           gPlayerNum++;
         }
         break;
       }
       case YEK_CONNECTION_LOST: {
-        auto id = ev->source()->id();
+        auto id = ev->source_id();
         auto p  = gPlayers[id];
-        if (!p)
-          break;
         gluainit->notifyConnent(0, p, nullptr);
         auto uid     = p->GetUid();
         gPlayers[id] = nullptr;

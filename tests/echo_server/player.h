@@ -11,7 +11,7 @@ static yasio::highp_time_t getTimeStamp() { return yasio::highp_clock<yasio::sys
 
 class Player {
 public:
-  Player(io_service* service, io_base* th, ConnectionPool* mysql_pool);
+  Player(io_service* service, io_base* th, ConnectionPool* mysql_pool, unsigned int id);
   ~Player();
 
   void LoginSucces(std::function<void(bool&)> b_cb_f);
