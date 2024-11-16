@@ -23,6 +23,10 @@ Player::~Player()
   {
     this->heartbeat_time->cancel();
   }
+  if (this->onetime!=nullptr)
+  {
+    this->onetime->cancel();
+  }
   this->heartbeat_time = nullptr;
   this->ib             = nullptr;
   this->onetime        = nullptr;
@@ -36,7 +40,7 @@ Player::~Player()
 void Player::LoginSucces(std::function<void(bool&)> b_cb_f)
 {
   auto uid = this->uid;
-  // ¸üÐÂÔÚÏßÊ±¼ä
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½
   mysql_pool->query("update `user` set `login_num` = `login_num` + 1 ,`pass` = CASE WHEN `login_num` < 5 THEN '"+this->pass+"' ELSE `pass` END , `login_time`=" + std::to_string(login_time) + ",`online_time`=" + std::to_string(login_time) +
                         " where `uid`=" + std::to_string(uid),
                     [=](std::vector<std::string>& data) {});
@@ -50,7 +54,7 @@ void Player::LoginSucces(std::function<void(bool&)> b_cb_f)
   this->heartbeat_time = service->schedule(std::chrono::milliseconds(10000), [th, thisplayer, thmysql_pool, uid](io_service& service) {
     auto now_time = getTimeStamp();
 
-    // ¸üÐÂÔÚÏßÊ±¼ä
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½
     thmysql_pool->query("update `user` set `online_time`=" + std::to_string(now_time / 1000) + " where `uid`=" + std::to_string(uid),
                         [=](std::vector<std::string>& data) {});
 
@@ -81,14 +85,14 @@ void Player::Login(int64_t uid, std::string pass, std::function<void(bool&)> b_c
 
     if (data.size() == 0)
     {
-      // ´´½¨Íæ¼ÒÊý¾Ý
+      // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
       mysql_pool->query("INSERT INTO `user`(uid, reg_time, login_time, online_time, pass,login_num)VALUES(" + std::to_string(uid) + "," +
                             std::to_string(this->login_time) + "," + std::to_string(this->login_time) + "," + std::to_string(this->online_time) + ",'" +
                             pass.data() + "',0)",
                         [=](std::vector<std::string>& data) { this->LoginSucces(b_cb_f); });
       return;
     }
-    else if (data[0] != pass && atoi(data[1].data())>=5) // ÃÜÂë²»¶Ô£¬ÍË³öµÇÂ¼
+    else if (data[0] != pass && atoi(data[1].data())>=5) // ï¿½ï¿½ï¿½ë²»ï¿½Ô£ï¿½ï¿½Ë³ï¿½ï¿½ï¿½Â¼
     {
       b = false;
       b_cb_f(b);
