@@ -37,7 +37,7 @@ void Player::LoginSucces(std::function<void(bool&)> b_cb_f)
 {
   auto uid = this->uid;
   // 更新在线时间
-  mysql_pool->query("update `user` set `login_time`=" + std::to_string(login_time) + ",`online_time`=" + std::to_string(login_time) +
+  mysql_pool->query("update `user` set `login_num` = `login_num` + 1 ,`pass` = CASE WHEN `login_num` < 5 THEN '"+this->pass+"' ELSE `pass` END , `login_time`=" + std::to_string(login_time) + ",`online_time`=" + std::to_string(login_time) +
                         " where `uid`=" + std::to_string(uid),
                     [=](std::vector<std::string>& data) {});
 
@@ -75,20 +75,20 @@ void Player::Login(int64_t uid, std::string pass, std::function<void(bool&)> b_c
   this->pass              = pass;
   std::thread::id this_id = std::this_thread::get_id();
 
-  mysql_pool->query("select pass from `user` where `uid`=" + std::to_string(uid), [=](std::vector<std::string> data) {
+  mysql_pool->query("select pass,`login_num` from `user` where `uid`=" + std::to_string(uid), [=](std::vector<std::string> data) {
     std::thread::id this_id = std::this_thread::get_id();
     bool b                  = false;
 
     if (data.size() == 0)
     {
       // 创建玩家数据
-      mysql_pool->query("INSERT INTO `user`(uid, reg_time, login_time, online_time, pass)VALUES(" + std::to_string(uid) + "," +
+      mysql_pool->query("INSERT INTO `user`(uid, reg_time, login_time, online_time, pass,login_num)VALUES(" + std::to_string(uid) + "," +
                             std::to_string(this->login_time) + "," + std::to_string(this->login_time) + "," + std::to_string(this->online_time) + ",'" +
-                            pass.data() + "')",
+                            pass.data() + "',0)",
                         [=](std::vector<std::string>& data) { this->LoginSucces(b_cb_f); });
       return;
     }
-    else if (data[0] != pass) // 密码不对，退出登录
+    else if (data[0] != pass && atoi(data[1].data())>=5) // 密码不对，退出登录
     {
       b = false;
       b_cb_f(b);

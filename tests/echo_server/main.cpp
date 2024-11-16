@@ -142,8 +142,9 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
       case YEK_CONNECT_RESPONSE: {
         if (ev->status() == 0)
         {
-          auto p                    = new Player(gservice, ev->source(), gmysql_pool, ev->source_id());
-          gPlayers[ev->source_id()] = p;
+          auto id      = ev->source_id();
+          auto p       = new Player(gservice, ev->source(), gmysql_pool, id);
+          gPlayers[id] = p;
           gPlayerNum++;
         }
         break;
