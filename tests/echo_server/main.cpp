@@ -21,7 +21,7 @@ std::map<int, bool> gPlayers_have_uid;
 
 int gPlayerNum = 0;
 
- bool RunFunc(io_event* ev, DataPacket* packet)
+bool RunFunc(io_event* ev, DataPacket* packet)
 {
 
   auto tid = ev->transport()->id();
@@ -30,6 +30,7 @@ int gPlayerNum = 0;
 
   if (packet->id != SERVER_LOGIN && p->GetUid() <= 10000)
   {
+    printf("login error\n");
     return false;
   }
 
@@ -40,6 +41,7 @@ int gPlayerNum = 0;
       auto uid = (int64_t)packet->data["uid"];
       if (uid <= 10000 || gPlayers_have_uid[uid])
       {
+        printf("uid error\n");
         return false;
       }
       gPlayers_have_uid[uid] = true;
@@ -47,10 +49,11 @@ int gPlayerNum = 0;
       p->Login(uid, (std::string)packet->data["pw"], [=](bool b) {
         if (!b)
         {
+          printf("pass error\n");
           gservice->close(p->GetTransport());
           return;
         }
-        gluainit->notifyConnent(1, p,nullptr);
+        gluainit->notifyConnent(1, p, nullptr);
       });
 
       break;
@@ -66,7 +69,7 @@ int gPlayerNum = 0;
   return true;
 }
 
- void handle_signal(int sig)
+void handle_signal(int sig)
 {
   if (gservice && sig == 2)
   {
@@ -75,12 +78,12 @@ int gPlayerNum = 0;
 }
 
 // 6: TCP server, 10: UDP server, 26: KCP server
- void run_echo_server(const char* ip, u_short port, const char* protocol)
+void run_echo_server(const char* ip, u_short port, const char* protocol)
 {
   io_hostent endpoints[] = {{ip, port}};
   io_service server(endpoints, 1);
   gservice    = &server;
-  gmysql_pool = new ConnectionPool("127.0.0.1", "root", "root", "testorpg", 3306, gservice);
+  gmysql_pool = new ConnectionPool("127.0.0.1", "root", "Aa1023261581", "testorpg", 3306, gservice);
   gluainit    = new LuaInit(gservice, gmysql_pool, &gPlayers);
 
   server.set_option(YOPT_S_NO_NEW_THREAD, 1);
@@ -115,7 +118,7 @@ int gPlayerNum = 0;
           auto& pkt = ev->packet();
           if (!pkt.empty())
           {
-            auto ibs = cxx14::make_unique<yasio::ibstream>(forward_packet((packet_t&&)pkt));
+            auto ibs = cxx14::make_unique<yasio::ibstream>(forward_packet((packet_t &&) pkt));
 
             try
             {
@@ -123,11 +126,13 @@ int gPlayerNum = 0;
               if (!RunFunc(ev.get(), &packet))
               {
                 gservice->close(ev->transport());
+                printf("run error\n");
               }
             }
-            catch (const std::exception&)
+            catch (const std::exception& e)
             {
               server.close(ev->transport());
+              printf(" error\n");
             }
             ibs = nullptr;
           }
@@ -138,15 +143,17 @@ int gPlayerNum = 0;
         if (ev->status() == 0)
         {
           auto p                          = new Player(gservice, ev->source(), gmysql_pool);
-          gPlayers[ev->transport()->id()] = p;
+          gPlayers[ev->source()->id()] = p;
           gPlayerNum++;
         }
         break;
       }
       case YEK_CONNECTION_LOST: {
-        auto id = ev->transport()->id();
+        auto id = ev->source()->id();
         auto p  = gPlayers[id];
-        gluainit->notifyConnent(0, p,nullptr);
+        if (!p)
+          break;
+        gluainit->notifyConnent(0, p, nullptr);
         auto uid     = p->GetUid();
         gPlayers[id] = nullptr;
         if (gPlayers_have_uid[uid])
