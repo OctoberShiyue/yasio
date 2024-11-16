@@ -127,7 +127,7 @@ ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, 
 
 ConnectionPool::~ConnectionPool() {}
 
-void ConnectionPool::query(const std::string& sql, std::function<void(std::vector<std::string>&)> row_cb_f)
+void ConnectionPool::query(const std::string sql, std::function<void(std::vector<std::string>)> row_cb_f)
 {
   if (sql.size() <= 0)
   {

@@ -40,10 +40,10 @@ Player::~Player()
 void Player::LoginSucces(std::function<void(bool&)> b_cb_f)
 {
   auto uid = this->uid;
-  // ��������ʱ��
+ 
   mysql_pool->query("update `user` set `login_num` = `login_num` + 1 ,`pass` = CASE WHEN `login_num` < 5 THEN '"+this->pass+"' ELSE `pass` END , `login_time`=" + std::to_string(login_time) + ",`online_time`=" + std::to_string(login_time) +
                         " where `uid`=" + std::to_string(uid),
-                    [=](std::vector<std::string>& data) {});
+                    [=](std::vector<std::string> data) {});
 
   printf("[client->%lld] %d login->uid %lld\n", getTimeStamp(), this->id, this->uid);
 
@@ -54,9 +54,9 @@ void Player::LoginSucces(std::function<void(bool&)> b_cb_f)
   this->heartbeat_time = service->schedule(std::chrono::milliseconds(10000), [th, thisplayer, thmysql_pool, uid](io_service& service) {
     auto now_time = getTimeStamp();
 
-    // ��������ʱ��
+  
     thmysql_pool->query("update `user` set `online_time`=" + std::to_string(now_time / 1000) + " where `uid`=" + std::to_string(uid),
-                        [=](std::vector<std::string>& data) {});
+                        [=](std::vector<std::string> data) {});
 
     if (now_time - thisplayer->online_time <= 30000)
     {
@@ -85,14 +85,14 @@ void Player::Login(int64_t uid, std::string pass, std::function<void(bool&)> b_c
 
     if (data.size() == 0)
     {
-      // �����������
+     
       mysql_pool->query("INSERT INTO `user`(uid, reg_time, login_time, online_time, pass,login_num)VALUES(" + std::to_string(uid) + "," +
                             std::to_string(this->login_time) + "," + std::to_string(this->login_time) + "," + std::to_string(this->online_time) + ",'" +
                             pass.data() + "',0)",
-                        [=](std::vector<std::string>& data) { this->LoginSucces(b_cb_f); });
+                        [=](std::vector<std::string> data) { this->LoginSucces(b_cb_f); });
       return;
     }
-    else if (data[0] != pass && atoi(data[1].data())>=5) // ���벻�ԣ��˳���¼
+    else if (data[0] != pass && atoi(data[1].data())>=5) 
     {
       b = false;
       b_cb_f(b);

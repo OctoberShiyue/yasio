@@ -17,7 +17,7 @@ public:
   ConnectionPool(const std::string& url, const std::string& user, const std::string& password, const std::string& db, int port, io_service* gservice);
   ~ConnectionPool();
 
-  void query(const std::string& sql, std::function<void(std::vector<std::string>&)> row_cb_f);
+  void query(const std::string sql, std::function<void(std::vector<std::string>)> row_cb_f);
   std::string url, user, password, db;
   int port;
 
