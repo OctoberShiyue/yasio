@@ -10,17 +10,24 @@
 #include <luainit.h>
 #include <datapacket.h>
 #include "minidump.h"
+#include "cmd.h"
 extern "C" {
 #include "log.h"
 }
 using namespace yasio;
 
-io_service* gservice        = nullptr; // the weak pointer
-ConnectionPool* gmysql_pool = nullptr;
-LuaInit* gluainit           = nullptr;
+io_service* gservice = nullptr; // the weak pointer
+
+LuaInit* gluainit = nullptr;
 
 std::map<int, Player*> gPlayers;
-std::map<int, bool> gPlayers_have_uid;
+std::map<INT64, bool> gPlayers_have_uid;
+ConnectionPool* gmysql_pool = nullptr;
+std::string gmysql_host;
+std::string gmysql_user;
+std::string gmysql_pass;
+std::string gmysql_db;
+int gmysql_port;
 
 int gPlayerNum = 0;
 
@@ -44,7 +51,7 @@ bool RunFunc(io_event* ev, DataPacket* packet)
       auto uid = (int64_t)packet->data["uid"];
       if (uid <= 10000 || gPlayers_have_uid[uid])
       {
-        printf("uid error=%lld\n",uid);
+        printf("uid error=%lld\n", uid);
         return false;
       }
       gPlayers_have_uid[uid] = true;
@@ -85,11 +92,16 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
 {
   io_hostent endpoints[] = {{ip, port}};
   io_service server(endpoints, 1);
-  gservice    = &server;
-  //"124.223.83.199", "testorpg", "mh4wabJCGnLMWH7E", "testorpg"
-  gmysql_pool = new ConnectionPool("127.0.0.1", "root", "root", "testorpg", 3306, gservice);
+  gservice = &server;
+  gmysql_pool = new ConnectionPool(gservice);
   gluainit    = new LuaInit(gservice, gmysql_pool, &gPlayers);
-
+  gluainit->updateMysqlInfo();
+  gmysql_pool->host = gluainit->mysql_host;
+  gmysql_pool->user = gluainit->mysql_user;
+  gmysql_pool->pass = gluainit->mysql_pass;
+  gmysql_pool->db   = gluainit->mysql_db;
+  gmysql_pool->port = gluainit->mysql_port;
+  gmysql_pool->init();
   server.set_option(YOPT_S_NO_NEW_THREAD, 1);
   server.set_option(YOPT_C_MOD_FLAGS, 0, YCF_REUSEADDR, 0);
 
@@ -134,7 +146,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
                 printf("run error\n");
               }
             }
-            catch (const std::exception& e)
+            catch (const std::exception&)
             {
               server.close(ev->transport());
               printf(" error\n");
@@ -178,10 +190,13 @@ int main(int argc, char** argv)
 
   return CatchAndWriteMiniDump(
       [=]() {
-        log_add_fp(fopen("log_trace.txt", "w+"), LOG_TRACE);
-        log_add_fp(fopen("log_error.txt", "w+"), LOG_ERROR);
-        log_trace("service run....");
-        run_echo_server("0.0.0.0", 18199, "tcp");
+        std::thread([]() {
+          log_add_fp(fopen("log_trace.txt", "w+"), LOG_TRACE);
+          log_add_fp(fopen("log_error.txt", "w+"), LOG_ERROR);
+          log_trace("service run....");
+          run_echo_server("0.0.0.0", 18199, "tcp");
+        }).detach();
+        InitCmd();
         return 1;
       },
       nullptr);

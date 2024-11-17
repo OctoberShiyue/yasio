@@ -71,14 +71,18 @@ bool getData(CallFuncStruct* d, const std::string& url, const std::string& user,
   return true;
 }
 
-ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, const std::string& password, const std::string& db, int port,
-                               io_service* service)
-    : url(url), user(user), password(password), db(db), port(port), service(service)
-{
+ConnectionPool::ConnectionPool(io_service* service) : service(service) {}
 
+void ConnectionPool::init()
+{
+  if (host.empty())
+  {
+    printf("数据库配置为null\n");
+    return;
+  }
   // 创建线程不停队列处理sql请求
   std::thread(
-      [](const std::string& url, const std::string& user, const std::string& password, const std::string& db, int port) {
+      [](const std::string& host, const std::string& user, const std::string& pass, const std::string& db, int port) {
         while (true)
         {
           std::unique_lock<std::mutex> lock(mtx);
@@ -86,14 +90,14 @@ ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, 
 
           CallFuncStruct d = messages.front(); // 获取消息
           messages.pop();                      // 从队列中移除消息
-          if (getData(&d, url, user, password, db, port))
+          if (getData(&d, host, user, pass, db, port))
           {
             messages_main.push(d); // 向队列中添加消息
           }
           lock.unlock(); // 解锁以允许其他线程访问队列
         }
       },
-      url, user, password, db, port)
+      host, user, pass, db, port)
       .detach();
 
   // 不停循环有没有处理完后的数据，有就回调

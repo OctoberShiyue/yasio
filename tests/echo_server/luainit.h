@@ -14,8 +14,10 @@ class LuaInit {
 public:
   LuaInit(io_service* service, ConnectionPool* mysql_pool, std::map<int, Player*>* Players);
   ~LuaInit();
-
-  void notifyConnent(int connent_type, Player* p, DataPacket* packet );
+  std::string mysql_host, mysql_user, mysql_pass, mysql_db;
+  int mysql_port;
+  void notifyConnent(int connent_type, Player* p, DataPacket* packet);
+  void updateMysqlInfo();
 
   void luaregister(lua_State* L);
 

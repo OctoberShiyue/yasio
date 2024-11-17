@@ -1,3 +1,5 @@
+print("配置数据库：",mysqlInit("127.0.0.1", "root", "Aa1023261581", "testorpg", 3306))
+
 require "lib.init"
 
 -- 登录
@@ -35,10 +37,10 @@ service_mssage = function(connent_type, pid, uid, packet)
 end
 
 ---返回的数据都是字符串列表的形式
----print(mysqlQuery("select * from `user` where `uid`=123456788",function ( d )
----    print(d)
----    for k,v in pairs(d) do
----	print(k,v)
----    end
----end
----))
+print("测试[mysqlQuery]",mysqlQuery("select * from `user` where `uid`=123456788",function ( d )
+    print(d)
+    for k,v in pairs(d) do
+	print(k,v)
+    end
+end
+))

@@ -3,6 +3,8 @@
 io_service* gLuaService        = nullptr;
 ConnectionPool* gLuamysql_pool = nullptr;
 std::map<int, Player*>* gLuaPlayers;
+std::string mysql_host2, mysql_user2, mysql_pass2, mysql_db2;
+int mysql_port2;
 
 LuaInit::LuaInit(io_service* service, ConnectionPool* mysql_pool, std::map<int, Player*>* Players)
 {
@@ -49,6 +51,14 @@ void LuaInit::notifyConnent(int connent_type, Player* p, DataPacket* packet)
     lua_pop(L, 1);
   }
 }
+void LuaInit::updateMysqlInfo()
+{
+  this->mysql_host = mysql_host2;
+  this->mysql_user = mysql_user2;
+  this->mysql_pass = mysql_pass2;
+  this->mysql_db   = mysql_db2;
+  this->mysql_port = mysql_port2;
+}
 extern "C" {
 
 static int createTime(lua_State* L)
@@ -58,7 +68,7 @@ static int createTime(lua_State* L)
     lua_pushboolean(L, false);
     return 1;
   }
-  int64_t time = lua_tonumber(L, 1);
+  int64_t time = (int64_t)lua_tonumber(L, 1);
   lua_pushvalue(L, 2);                          // 将函数复制到栈顶
   int funcRef = luaL_ref(L, LUA_REGISTRYINDEX); // 将函数引用存储在注册表中
 
@@ -88,8 +98,8 @@ static int sendClientData(lua_State* L)
     return 1;
   }
 
-  int pid = lua_tonumber(L, 1);
-  int id  = lua_tonumber(L, 2);
+  int pid = (int)lua_tonumber(L, 1);
+  int id  = (int)lua_tonumber(L, 2);
 
   Player* p = (*gLuaPlayers)[pid];
 
@@ -130,7 +140,7 @@ static int mysqlQuery(lua_State* L)
     lua_newtable(L);
     for (size_t i = 0; i < data.size(); i++)
     {
-      lua_pushinteger(L, i+1); // 压入值
+      lua_pushinteger(L, i + 1); // 压入值
       lua_pushstring(L, data[i].data());
       lua_settable(L, -3);
     }
@@ -147,6 +157,25 @@ static int mysqlQuery(lua_State* L)
   return 1;
 }
 }
+
+static int mysqlInit(lua_State* L)
+{
+
+  if (!lua_isstring(L, 1) || !lua_isstring(L, 2) || !lua_isstring(L, 3) || !lua_isstring(L, 4) || !lua_isnumber(L, 5))
+  {
+    lua_pushboolean(L, false);
+    return 1;
+  }
+
+  mysql_host2 = lua_tostring(L, 1);
+  mysql_user2 = lua_tostring(L, 2);
+  mysql_pass2 = lua_tostring(L, 3);
+  mysql_db2   = lua_tostring(L, 4);
+  mysql_port2 = (int)lua_tonumber(L, 5);
+
+  lua_pushboolean(L, true);
+  return 1;
+}
 extern "C" {
 void LuaInit::luaregister(lua_State* L)
 {
@@ -158,6 +187,9 @@ void LuaInit::luaregister(lua_State* L)
 
   lua_pushcfunction(L, mysqlQuery);
   lua_setglobal(L, "mysqlQuery");
+
+  lua_pushcfunction(L, mysqlInit);
+  lua_setglobal(L, "mysqlInit");
 
   // 加载路径
   lua_getglobal(L, "package");
