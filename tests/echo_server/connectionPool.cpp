@@ -1,5 +1,8 @@
 #include <connectionPool.h>
 #include <iostream>
+extern "C" {
+#include "log.h"
+}
 
 typedef std::function<void(std::vector<std::string>&)> call_func;
 
@@ -27,9 +30,9 @@ void getData(CallFuncStruct* d, const std::string& url, const std::string& user,
     return;
   }
   std::string sql = d->sql;
-
-  if (sql.size()<=0)
+  if (sql.empty())
   {
+    log_debug("sql = null");
     printf("[mysql->error] sql = null\n");
     mysql_close(conn);
     conn = nullptr;
@@ -88,14 +91,7 @@ ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, 
 
           CallFuncStruct d = messages.front(); // 获取消息
           messages.pop();                      // 从队列中移除消息
-          try
-          {
-            getData(&d, url, user, password, db, port);
-          }
-          catch (...)
-          {
-            printf("sql error2\n");
-          }
+          getData(&d, url, user, password, db, port);
           messages_main.push(d); // 向队列中添加消息
           lock.unlock();         // 解锁以允许其他线程访问队列
         }

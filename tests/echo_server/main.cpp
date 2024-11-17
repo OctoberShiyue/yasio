@@ -10,7 +10,9 @@
 #include <luainit.h>
 #include <datapacket.h>
 #include "minidump.h"
-
+extern "C" {
+#include "log.h"
+}
 using namespace yasio;
 
 io_service* gservice        = nullptr; // the weak pointer
@@ -174,6 +176,9 @@ int main(int argc, char** argv)
 
   return CatchAndWriteMiniDump(
       [=]() {
+        log_add_fp(fopen("log_trace.txt", "w+"), 0);
+        log_add_fp(fopen("log_error.txt", "w+"), 0);
+        log_trace("service run....");
         run_echo_server("0.0.0.0", 18199, "tcp");
         return 1;
       },

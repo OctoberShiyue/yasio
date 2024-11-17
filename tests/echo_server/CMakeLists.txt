@@ -9,6 +9,7 @@ set (ECHO_SERVER_INC_DIR
 file(GLOB ECHO_SERVER_SRC
     "${ECHO_SERVER_SRC_DIR}/*.cpp"
     "${ECHO_SERVER_SRC_DIR}/*.h"
+    "${ECHO_SERVER_SRC_DIR}/*.c"
 
     "${ECHO_SERVER_SRC_DIR}/lib/base64/*.cpp"
     "${ECHO_SERVER_SRC_DIR}/lib/base64/*.h"
