@@ -77,10 +77,8 @@ void Player::Login(int64_t uid, std::string pass, std::function<void(bool&)> b_c
   this->login_time        = getTimeStamp() / 1000;
   this->online_time       = getTimeStamp() / 1000;
   this->pass              = pass;
-  std::thread::id this_id = std::this_thread::get_id();
 
   mysql_pool->query("select pass,`login_num` from `user` where `uid`=" + std::to_string(uid), [=](std::vector<std::string> data) {
-    std::thread::id this_id = std::this_thread::get_id();
     bool b                  = false;
 
     if (data.size() == 0)
