@@ -26,6 +26,15 @@ file(GLOB ECHO_SERVER_SRC
 include_directories ("${ECHO_SERVER_SRC_DIR}")
 include_directories ("${ECHO_SERVER_INC_DIR}")
 
+if(MSVC)
+    # For Visual Studio, add /Zi for program database and /DEBUG for linking
+    add_compile_options(/Zi)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # For GCC or Clang, use -g for debugging information
+    add_compile_options(-g)
+endif()
+
 add_executable (${target_name} ${ECHO_SERVER_SRC}) 
 
 target_link_libraries(${target_name}

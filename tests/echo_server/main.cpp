@@ -9,6 +9,7 @@
 #include <connectionPool.h>
 #include <luainit.h>
 #include <datapacket.h>
+#include "minidump.h"
 
 using namespace yasio;
 
@@ -171,12 +172,14 @@ int main(int argc, char** argv)
   // 设置控制台输出为 UTF-8 编码
   SetConsoleOutputCP(CP_UTF8);
 
-  run_echo_server("0.0.0.0", 18199, "tcp");
-
+  return CatchAndWriteMiniDump(
+      [=]() {
+        run_echo_server("0.0.0.0", 18199, "tcp");
+        return 1;
+      },
+      nullptr);
   // main一个线程
   // 服务端,lua一个线程【完成】
   // lua需要重启，和执行lua代码功能，需要封装，计时器【完成】|发送数据【完成】|接受数据|执行sql
   // 数据库查询一个线程【完成】
-
-  return 0;
 }
