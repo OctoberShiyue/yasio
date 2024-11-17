@@ -33,3 +33,12 @@ service_mssage = function(connent_type, pid, uid, packet)
         )
     end
 end
+
+---返回的数据都是字符串列表的形式
+---print(mysqlQuery("select * from `user` where `uid`=123456788",function ( d )
+---    print(d)
+---    for k,v in pairs(d) do
+---	print(k,v)
+---    end
+---end
+---))

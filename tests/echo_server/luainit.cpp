@@ -1,13 +1,15 @@
 #include <luainit.h>
 
-io_service* gLuaService = nullptr;
+io_service* gLuaService        = nullptr;
+ConnectionPool* gLuamysql_pool = nullptr;
 std::map<int, Player*>* gLuaPlayers;
 
 LuaInit::LuaInit(io_service* service, ConnectionPool* mysql_pool, std::map<int, Player*>* Players)
 {
-  gLuaService = service;
-  gLuaPlayers = Players;
-  L           = luaL_newstate();
+  gLuaService    = service;
+  gLuaPlayers    = Players;
+  gLuamysql_pool = mysql_pool;
+  L              = luaL_newstate();
   luaL_openlibs(L);
   luaregister(L);
   const char* luaCode = "require 'main'";
@@ -24,13 +26,13 @@ void LuaInit::notifyConnent(int connent_type, Player* p, DataPacket* packet)
   lua_getglobal(L, "service_mssage");
   if (!lua_isfunction(L, -1))
   {
-    lua_pop(L, 1); // ÒÆ³ý·Çº¯ÊýÖµ
+    lua_pop(L, 1); // ç§»é™¤éžå‡½æ•°å€¼
     return;
   }
-  // Ñ¹Èë²ÎÊý
-  lua_pushinteger(L, connent_type); // Í¨µÀID
-  lua_pushinteger(L, p->GetId());   // Íæ¼ÒID
-  lua_pushinteger(L, p->GetUid());  // Íæ¼ÒUID
+  // åŽ‹å…¥å‚æ•°
+  lua_pushinteger(L, connent_type); // é€šé“ID
+  lua_pushinteger(L, p->GetId());   // çŽ©å®¶ID
+  lua_pushinteger(L, p->GetUid());  // çŽ©å®¶UID
   if (packet != nullptr)
   {
     lua_pushstring(L, packet->data.dump().c_str());
@@ -57,11 +59,11 @@ static int createTime(lua_State* L)
     return 1;
   }
   int64_t time = lua_tonumber(L, 1);
-  lua_pushvalue(L, 2);                          // ½«º¯Êý¸´ÖÆµ½Õ»¶¥
-  int funcRef = luaL_ref(L, LUA_REGISTRYINDEX); // ½«º¯ÊýÒýÓÃ´æ´¢ÔÚ×¢²á±íÖÐ
+  lua_pushvalue(L, 2);                          // å°†å‡½æ•°å¤åˆ¶åˆ°æ ˆé¡¶
+  int funcRef = luaL_ref(L, LUA_REGISTRYINDEX); // å°†å‡½æ•°å¼•ç”¨å­˜å‚¨åœ¨æ³¨å†Œè¡¨ä¸­
 
   gLuaService->schedule(std::chrono::milliseconds(time), [L, funcRef](io_service& service) {
-    lua_rawgeti(L, LUA_REGISTRYINDEX, funcRef); // ´Ó×¢²á±íÖÐ»ñÈ¡º¯Êý
+    lua_rawgeti(L, LUA_REGISTRYINDEX, funcRef); // ä»Žæ³¨å†Œè¡¨ä¸­èŽ·å–å‡½æ•°
     if (lua_pcall(L, 0, 1, 0) != LUA_OK)
     {
       fprintf(stderr, "Error: %s\n", lua_tostring(L, -1));
@@ -79,7 +81,7 @@ static int createTime(lua_State* L)
 
 static int sendClientData(lua_State* L)
 {
-  // Íæ¼ÒPID/Í¨µÀÊý/jsonÊý¾Ý
+  // çŽ©å®¶PID/é€šé“æ•°/jsonæ•°æ®
   if (!lua_isnumber(L, 1) || !lua_isnumber(L, 2) || !lua_isstring(L, 3))
   {
     lua_pushboolean(L, false);
@@ -113,6 +115,37 @@ static int sendClientData(lua_State* L)
   lua_pushboolean(L, true);
   return 1;
 }
+
+static int mysqlQuery(lua_State* L)
+{
+  if (!lua_isstring(L, 1) || !lua_isfunction(L, 2))
+  {
+    lua_pushboolean(L, false);
+    return 1;
+  }
+  lua_pushvalue(L, 2);
+  int funcRef = luaL_ref(L, LUA_REGISTRYINDEX);
+  gLuamysql_pool->query(lua_tostring(L, 1), [=](std::vector<std::string> data) {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, funcRef);
+    lua_newtable(L);
+    for (size_t i = 0; i < data.size(); i++)
+    {
+      lua_pushinteger(L, i+1); // åŽ‹å…¥å€¼
+      lua_pushstring(L, data[i].data());
+      lua_settable(L, -3);
+    }
+    if (lua_pcall(L, 1, 0, 0) != LUA_OK)
+    {
+      fprintf(stderr, "Error: %s\n", lua_tostring(L, -1));
+
+      return;
+    }
+    return;
+  });
+
+  lua_pushboolean(L, true);
+  return 1;
+}
 }
 extern "C" {
 void LuaInit::luaregister(lua_State* L)
@@ -123,7 +156,10 @@ void LuaInit::luaregister(lua_State* L)
   lua_pushcfunction(L, sendClientData);
   lua_setglobal(L, "sendClientData");
 
-  // ¼ÓÔØÂ·¾¶
+  lua_pushcfunction(L, mysqlQuery);
+  lua_setglobal(L, "mysqlQuery");
+
+  // åŠ è½½è·¯å¾„
   lua_getglobal(L, "package");
   lua_getfield(L, -1, "path");
   const char* current_path = lua_tostring(L, -1);
