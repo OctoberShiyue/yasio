@@ -1,3 +1,5 @@
+
+print("配置服务器端口：",serviceInit("0.0.0.0", 18199))
 print("配置数据库：",mysqlInit("127.0.0.1", "root", "Aa1023261581", "testorpg", 3306))
 
 require "lib.init"

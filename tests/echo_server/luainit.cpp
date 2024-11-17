@@ -6,9 +6,11 @@ std::map<int, Player*>* gLuaPlayers;
 std::string mysql_host2, mysql_user2, mysql_pass2, mysql_db2;
 int mysql_port2;
 
-LuaInit::LuaInit(io_service* service, ConnectionPool* mysql_pool, std::map<int, Player*>* Players)
+std::string service_ip2;
+u_short service_port2;
+
+LuaInit::LuaInit(ConnectionPool* mysql_pool, std::map<int, Player*>* Players)
 {
-  gLuaService    = service;
   gLuaPlayers    = Players;
   gLuamysql_pool = mysql_pool;
   L              = luaL_newstate();
@@ -59,6 +61,13 @@ void LuaInit::updateMysqlInfo()
   this->mysql_db   = mysql_db2;
   this->mysql_port = mysql_port2;
 }
+void LuaInit::updateServiceInfo()
+{
+
+  this->service_ip   = service_ip2;
+  this->service_port = service_port2;
+}
+void LuaInit::setService(io_service* service) { gLuaService = service; }
 extern "C" {
 
 static int createTime(lua_State* L)
@@ -176,6 +185,22 @@ static int mysqlInit(lua_State* L)
   lua_pushboolean(L, true);
   return 1;
 }
+
+static int serviceInit(lua_State* L)
+{
+
+  if (!lua_isstring(L, 1) || !lua_isnumber(L, 2))
+  {
+    lua_pushboolean(L, false);
+    return 1;
+  }
+
+  service_ip2   = lua_tostring(L, 1);
+  service_port2 = (int)lua_tonumber(L, 2);
+
+  lua_pushboolean(L, true);
+  return 1;
+}
 extern "C" {
 void LuaInit::luaregister(lua_State* L)
 {
@@ -190,6 +215,9 @@ void LuaInit::luaregister(lua_State* L)
 
   lua_pushcfunction(L, mysqlInit);
   lua_setglobal(L, "mysqlInit");
+
+  lua_pushcfunction(L, serviceInit);
+  lua_setglobal(L, "serviceInit");
 
   // 加载路径
   lua_getglobal(L, "package");

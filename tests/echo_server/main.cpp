@@ -87,15 +87,17 @@ void handle_signal(int sig)
   }
 }
 
-// 6: TCP server, 10: UDP server, 26: KCP server
-void run_echo_server(const char* ip, u_short port, const char* protocol)
+
+void run_echo_server( const char* protocol)
 {
-  io_hostent endpoints[] = {{ip, port}};
-  io_service server(endpoints, 1);
-  gservice = &server;
-  gmysql_pool = new ConnectionPool(gservice);
-  gluainit    = new LuaInit(gservice, gmysql_pool, &gPlayers);
+  gluainit    = new LuaInit(gmysql_pool, &gPlayers);
   gluainit->updateMysqlInfo();
+  gluainit->updateServiceInfo();
+  io_hostent endpoints[] = {{gluainit->service_ip.c_str(), gluainit->service_port}};
+  io_service server(endpoints, 1);
+  gluainit->setService(gservice);
+  gservice          = &server;
+  gmysql_pool       = new ConnectionPool(gservice);
   gmysql_pool->host = gluainit->mysql_host;
   gmysql_pool->user = gluainit->mysql_user;
   gmysql_pool->pass = gluainit->mysql_pass;
@@ -111,7 +113,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
   timer.expires_from_now(std::chrono::seconds(1));
   timer.async_wait_once([=](io_service& server) {
     server.set_option(YOPT_C_UNPACK_PARAMS, 0, 65535, 0, 4, 0);
-    printf("[server][%s] open server %s:%u ...\n", protocol, ip, port);
+    printf("[server][%s] open server %s:%u ...\n", protocol, gluainit->service_ip.c_str(), gluainit->service_port);
     if (cxx20::ic::iequals(protocol, "udp"))
       server.open(0, YCK_UDP_SERVER);
     else if (cxx20::ic::iequals(protocol, "kcp"))
@@ -194,7 +196,7 @@ int main(int argc, char** argv)
           log_add_fp(fopen("log_trace.txt", "w+"), LOG_TRACE);
           log_add_fp(fopen("log_error.txt", "w+"), LOG_ERROR);
           log_trace("service run....");
-          run_echo_server("0.0.0.0", 18199, "tcp");
+          run_echo_server("tcp");
         }).detach();
         InitCmd();
         return 1;

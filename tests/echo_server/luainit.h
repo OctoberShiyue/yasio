@@ -12,14 +12,20 @@ using namespace yasio;
 
 class LuaInit {
 public:
-  LuaInit(io_service* service, ConnectionPool* mysql_pool, std::map<int, Player*>* Players);
+  LuaInit( ConnectionPool* mysql_pool, std::map<int, Player*>* Players);
   ~LuaInit();
-  std::string mysql_host, mysql_user, mysql_pass, mysql_db;
-  int mysql_port;
+
   void notifyConnent(int connent_type, Player* p, DataPacket* packet);
   void updateMysqlInfo();
+  void updateServiceInfo();
+  void setService(io_service* service);
 
   void luaregister(lua_State* L);
+
+  std::string mysql_host, mysql_user, mysql_pass, mysql_db;
+  int mysql_port;
+  std::string service_ip = "0.0.0.0";
+  u_short service_port  = 19999;
 
 private:
   lua_State* L;
