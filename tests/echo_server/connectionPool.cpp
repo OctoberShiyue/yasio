@@ -112,14 +112,8 @@ ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, 
         return false;
       CallFuncStruct msg = messages_main.front(); // 获取消息
       messages_main.pop();                        // 从队列中移除消息
-      try
-      {
-        msg.call_back(msg.data);
-      }
-      catch (...)
-      {
-        printf("sql error\n");
-      }
+      lock.unlock();
+      msg.call_back(msg.data);
     }
     return false;
   });
@@ -129,10 +123,9 @@ ConnectionPool::~ConnectionPool() {}
 
 void ConnectionPool::query(const std::string sql, std::function<void(std::vector<std::string>)> row_cb_f)
 {
-  if (sql.size() <= 0)
-  {
+  if (sql.empty())
     return;
-  }
+  std::lock_guard<std::mutex> lock(mtx);
   CallFuncStruct cd{};
   cd.sql       = sql;
   cd.call_back = row_cb_f;
