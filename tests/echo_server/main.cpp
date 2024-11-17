@@ -44,7 +44,7 @@ bool RunFunc(io_event* ev, DataPacket* packet)
       auto uid = (int64_t)packet->data["uid"];
       if (uid <= 10000 || gPlayers_have_uid[uid])
       {
-        printf("uid error\n");
+        printf("uid error=%lld\n",uid);
         return false;
       }
       gPlayers_have_uid[uid] = true;
