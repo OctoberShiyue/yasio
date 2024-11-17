@@ -32,7 +32,7 @@ void getData(CallFuncStruct* d, const std::string& url, const std::string& user,
   std::string sql = d->sql;
   if (sql.empty())
   {
-    log_debug("sql = null");
+    log_error("sql = null");
     printf("[mysql->error] sql = null\n");
     mysql_close(conn);
     conn = nullptr;

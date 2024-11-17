@@ -109,6 +109,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
 
   gservice->schedule(std::chrono::milliseconds(60000), [=](io_service& service) {
     printf("[msg->%lld]player_num=%d\n", getTimeStamp() / 1000, gPlayerNum);
+    log_trace("player_num=%d", gPlayerNum);
     return false;
   });
 
@@ -176,8 +177,8 @@ int main(int argc, char** argv)
 
   return CatchAndWriteMiniDump(
       [=]() {
-        log_add_fp(fopen("log_trace.txt", "w+"), 0);
-        log_add_fp(fopen("log_error.txt", "w+"), 0);
+        log_add_fp(fopen("log_trace.txt", "w+"), LOG_TRACE);
+        log_add_fp(fopen("log_error.txt", "w+"), LOG_ERROR);
         log_trace("service run....");
         run_echo_server("0.0.0.0", 18199, "tcp");
         return 1;
