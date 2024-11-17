@@ -17,8 +17,10 @@ std::queue<CallFuncStruct> messages;
 std::queue<CallFuncStruct> messages_main;
 std::condition_variable cv;
 
-void getData(CallFuncStruct* d, const std::string& url, const std::string& user, const std::string& password, const std::string& db, int port)
+bool getData(CallFuncStruct* d, const std::string& url, const std::string& user, const std::string& password, const std::string& db, int port)
 {
+  if (d->sql.empty())
+    return false;
   //// 开始连接数据库
   MYSQL* conn = mysql_init(nullptr);
   mysql_real_connect(conn, url.c_str(), user.c_str(), password.c_str(), db.c_str(), port, nullptr, 0);
@@ -27,24 +29,16 @@ void getData(CallFuncStruct* d, const std::string& url, const std::string& user,
     printf("[mysql->error] failed to get connection\n");
     mysql_close(conn);
     conn = nullptr;
-    return;
+    return false;
   }
   std::string sql = d->sql;
-  if (sql.empty())
-  {
-    log_error("sql = null");
-    printf("[mysql->error] sql = null\n");
-    mysql_close(conn);
-    conn = nullptr;
-    return;
-  }
 
   if (mysql_query(conn, sql.c_str()))
   {
     printf("[mysql->error] query failed: %s = %s \n", mysql_error(conn), sql.c_str());
     mysql_close(conn);
     conn = nullptr;
-    return;
+    return false;
   }
 
   MYSQL_RES* res = mysql_store_result(conn);
@@ -53,7 +47,7 @@ void getData(CallFuncStruct* d, const std::string& url, const std::string& user,
     // printf("[mysql->error] query failed: %s\n", mysql_error(conn));
     mysql_close(conn);
     conn = nullptr;
-    return;
+    return false;
   }
 
   MYSQL_ROW row;
@@ -74,6 +68,7 @@ void getData(CallFuncStruct* d, const std::string& url, const std::string& user,
   row = nullptr;
   mysql_close(conn);
   conn = nullptr;
+  return true;
 }
 
 ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, const std::string& password, const std::string& db, int port,
@@ -91,9 +86,11 @@ ConnectionPool::ConnectionPool(const std::string& url, const std::string& user, 
 
           CallFuncStruct d = messages.front(); // 获取消息
           messages.pop();                      // 从队列中移除消息
-          getData(&d, url, user, password, db, port);
-          messages_main.push(d); // 向队列中添加消息
-          lock.unlock();         // 解锁以允许其他线程访问队列
+          if (getData(&d, url, user, password, db, port))
+          {
+            messages_main.push(d); // 向队列中添加消息
+          }
+          lock.unlock(); // 解锁以允许其他线程访问队列
         }
       },
       url, user, password, db, port)
@@ -121,7 +118,7 @@ void ConnectionPool::query(const std::string sql, std::function<void(std::vector
 {
   if (sql.empty())
     return;
-  std::lock_guard<std::mutex> lock(mtx);
+  // std::lock_guard<std::mutex> lock(mtx);
   CallFuncStruct cd{};
   cd.sql       = sql;
   cd.call_back = row_cb_f;

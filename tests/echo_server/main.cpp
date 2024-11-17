@@ -86,6 +86,7 @@ void run_echo_server(const char* ip, u_short port, const char* protocol)
   io_hostent endpoints[] = {{ip, port}};
   io_service server(endpoints, 1);
   gservice    = &server;
+  //"124.223.83.199", "testorpg", "mh4wabJCGnLMWH7E", "testorpg"
   gmysql_pool = new ConnectionPool("127.0.0.1", "root", "root", "testorpg", 3306, gservice);
   gluainit    = new LuaInit(gservice, gmysql_pool, &gPlayers);
 
