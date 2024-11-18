@@ -1,0 +1,13 @@
+{
+    "service": {
+        "ip": "0.0.0.0",
+        "port": 18199
+    },
+    "mysql": {
+        "host": "127.0.0.1",
+        "user": "root",
+        "pass": "Aa1023261581",
+        "db": "testorpg",
+        "port": 3306
+    }
+}
