@@ -22,6 +22,8 @@ public:
 
   void luaregister(lua_State* L);
 
+  void loadCode(std::string code);
+
   std::string mysql_host, mysql_user, mysql_pass, mysql_db;
   int mysql_port;
   std::string service_ip = "0.0.0.0";

@@ -1,21 +1,16 @@
 #include <connectionPool.h>
 #include <iostream>
+#include <luainit.h>
 extern "C" {
 #include "log.h"
 }
 
-typedef std::function<void(std::vector<std::string>&)> call_func;
-
-struct CallFuncStruct {
-  call_func call_back;
-  std::string sql;
-  std::vector<std::string> data;
-};
-
 std::mutex mtx;
 std::queue<CallFuncStruct> messages;
 std::queue<CallFuncStruct> messages_main;
+std::queue<lua_code> messages_lua;
 std::condition_variable cv;
+LuaInit* gcluainit;
 
 bool getData(CallFuncStruct* d, const std::string& url, const std::string& user, const std::string& password, const std::string& db, int port)
 {
@@ -35,7 +30,7 @@ bool getData(CallFuncStruct* d, const std::string& url, const std::string& user,
 
   if (mysql_query(conn, sql.c_str()))
   {
-    printf("[mysql->error] query failed: %s = %s \n", mysql_error(conn), sql.c_str());
+    printf("[mysql->error] query failed: %s [sqlerror:%s] \n", mysql_error(conn), sql.c_str());
     mysql_close(conn);
     conn = nullptr;
     return false;
@@ -49,18 +44,17 @@ bool getData(CallFuncStruct* d, const std::string& url, const std::string& user,
     conn = nullptr;
     return false;
   }
+  int num_fields = mysql_num_fields(res);
 
   MYSQL_ROW row;
-  // 获取字段数量
-  int num_fields = mysql_num_fields(res);
-  row            = mysql_fetch_row(res);
-  if (row != NULL)
+  while ((row = mysql_fetch_row(res)))
   {
+    std::vector<std::string> list;
     for (int i = 0; i < num_fields; i++)
     {
-
-      d->data.push_back(((std::string)row[i]));
+      list.push_back(((std::string)row[i]));
     }
+    d->data.push_back(list);
   }
 
   mysql_free_result(res);
@@ -114,18 +108,42 @@ void ConnectionPool::init()
     }
     return false;
   });
+  service->schedule(std::chrono::milliseconds(500), [](io_service& service) {
+    while (true)
+    {
+      std::unique_lock<std::mutex> lock(mtx);
+      if (messages_lua.empty())
+        return false;
+      lua_code msg = messages_lua.front(); // 获取消息
+      messages_lua.pop();                  // 从队列中移除消息
+      lock.unlock();
+      gcluainit->loadCode(msg);
+    }
+    return false;
+  });
 }
 
 ConnectionPool::~ConnectionPool() {}
 
-void ConnectionPool::query(const std::string sql, std::function<void(std::vector<std::string>)> row_cb_f)
+void ConnectionPool::query(const std::string sql, std::function<void(call_back_data)> row_cb_f)
 {
   if (sql.empty())
     return;
-  // std::lock_guard<std::mutex> lock(mtx);
+
   CallFuncStruct cd{};
   cd.sql       = sql;
   cd.call_back = row_cb_f;
   messages.push(cd);
   cv.notify_one();
 }
+
+void ConnectionPool::loadLuaCode(const std::string code)
+{
+  if (code.empty())
+    return;
+
+  std::unique_lock<std::mutex> lock(mtx);
+  messages_lua.push(code);
+}
+
+void ConnectionPool::setLuaInit(void* lua) { gcluainit = (LuaInit*)lua; }

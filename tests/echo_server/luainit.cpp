@@ -144,13 +144,20 @@ static int mysqlQuery(lua_State* L)
   }
   lua_pushvalue(L, 2);
   int funcRef = luaL_ref(L, LUA_REGISTRYINDEX);
-  gLuamysql_pool->query(lua_tostring(L, 1), [=](std::vector<std::string> data) {
+  gLuamysql_pool->query(lua_tostring(L, 1), [=](call_back_data data) {
     lua_rawgeti(L, LUA_REGISTRYINDEX, funcRef);
     lua_newtable(L);
     for (size_t i = 0; i < data.size(); i++)
     {
-      lua_pushinteger(L, i + 1); // 压入值
-      lua_pushstring(L, data[i].data());
+      std::vector<std::string> data2 = data[i];
+      lua_pushinteger(L, i + 1);
+      lua_newtable(L);
+      for (size_t i2 = 0; i2 < data2.size(); i2++)
+      {
+        lua_pushinteger(L, i2 + 1);
+        lua_pushstring(L, data2[i2].data());
+        lua_settable(L, -3);
+      }
       lua_settable(L, -3);
     }
     if (lua_pcall(L, 1, 0, 0) != LUA_OK)
@@ -228,5 +235,16 @@ void LuaInit::luaregister(lua_State* L)
   lua_pushstring(L, new_path.c_str());
   lua_setfield(L, -2, "path");
   lua_pop(L, 1);
+}
+void LuaInit::loadCode(std::string code)
+{
+  if (code.size() <= 0)
+  {
+    return;
+  }
+  if (luaL_dostring(L, code.data()))
+  {
+    fprintf(stderr, "Error: %s\n", lua_tostring(L, -1));
+  }
 }
 }

@@ -98,6 +98,7 @@ void run_echo_server( const char* protocol)
   gluainit->setService(gservice);
   gservice          = &server;
   gmysql_pool       = new ConnectionPool(gservice);
+  gmysql_pool->setLuaInit(gluainit);
   gmysql_pool->host = gluainit->mysql_host;
   gmysql_pool->user = gluainit->mysql_user;
   gmysql_pool->pass = gluainit->mysql_pass;
