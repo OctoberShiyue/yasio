@@ -57,3 +57,10 @@ print("测试[mysqlQuery]", mysqlQuery("select * from `user` where `uid`=1234567
         end
     end
 end))
+
+-- gint=100
+
+-- createTime(5*1000,function ()
+--    print("gint=",gint)
+--    return false
+-- end)
