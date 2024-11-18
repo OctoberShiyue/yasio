@@ -28,7 +28,6 @@ bool getData(CallFuncStruct* d, const std::string& url, const std::string& user,
     return false;
   }
   std::string sql = d->sql;
-
   if (mysql_query(conn, sql.c_str()))
   {
     printf("[mysql->error] query failed: %s [sqlerror:%s] \n", mysql_error(conn), sql.c_str());
