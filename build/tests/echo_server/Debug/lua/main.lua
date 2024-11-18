@@ -45,15 +45,21 @@ service_mssage = function(connent_type, pid, uid, packet)
 end
 
 ---返回的数据都是字符串列表的形式
-print("测试[mysqlQuery]", mysqlQuery("select * from `user` where `uid`=123456788", function(d)
-    print(d, #d)
-    for k, v in pairs(d) do
-        print(k, v)
-        for k2, v2 in pairs(v) do
-            print(k, v, k2, v2)
+
+
+for i = 1, 1000 do
+    local st=os.clock()
+    print("测试[mysqlQuery]", mysqlQuery("select * from `user` where `uid`=123456788", function(d)
+        print(d, #d)
+        for k, v in pairs(d) do
+            print(k, v)
+            for k2, v2 in pairs(v) do
+                print(k, v, k2, v2)
+            end
         end
-    end
-end))
+        print(i,"==",os.clock()-st)
+    end))
+end
 
 gint=100
 
