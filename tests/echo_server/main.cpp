@@ -87,24 +87,46 @@ void handle_signal(int sig)
   }
 }
 
-
-void run_echo_server( const char* protocol)
+void run_echo_server(const char* protocol)
 {
-  gluainit    = new LuaInit(gmysql_pool, &gPlayers);
-  gluainit->updateMysqlInfo();
-  gluainit->updateServiceInfo();
-  io_hostent endpoints[] = {{gluainit->service_ip.c_str(), gluainit->service_port}};
+  std::ifstream inputFile("config.json");
+  if (!inputFile.is_open())
+  {
+    std::cerr << "Could not open the config.json file!" << std::endl;
+    return ;
+  }
+  nlohmann::json configData;
+  try
+  {
+    inputFile >> configData;
+  }
+  catch (nlohmann::json::parse_error& e)
+  {
+    std::cerr << "Parse config.json error: " << e.what() << std::endl;
+    return ;
+  }
+  inputFile.close();
+
+  io_hostent endpoints[] = {{configData["service"]["ip"].get<std::string>().c_str(), configData["service"]["port"].get<u_short>()}};
   io_service server(endpoints, 1);
+  gservice = &server;
+
+
+  gluainit = new LuaInit(gmysql_pool, &gPlayers);
   gluainit->setService(gservice);
-  gservice          = &server;
-  gmysql_pool       = new ConnectionPool(gservice);
+  gluainit->init();
+
+  gmysql_pool = new ConnectionPool(gservice);
   gmysql_pool->setLuaInit(gluainit);
-  gmysql_pool->host = gluainit->mysql_host;
-  gmysql_pool->user = gluainit->mysql_user;
-  gmysql_pool->pass = gluainit->mysql_pass;
-  gmysql_pool->db   = gluainit->mysql_db;
-  gmysql_pool->port = gluainit->mysql_port;
+  gmysql_pool->host = configData["mysql"]["host"].get<std::string>().c_str();
+  gmysql_pool->user = configData["mysql"]["user"].get<std::string>().c_str();
+  gmysql_pool->pass = configData["mysql"]["pass"].get<std::string>().c_str();
+  gmysql_pool->db   = configData["mysql"]["db"].get<std::string>().c_str();
+  gmysql_pool->port = configData["mysql"]["port"].get<int>();
   gmysql_pool->init();
+
+
+
   server.set_option(YOPT_S_NO_NEW_THREAD, 1);
   server.set_option(YOPT_C_MOD_FLAGS, 0, YCF_REUSEADDR, 0);
 
@@ -190,21 +212,18 @@ int main(int argc, char** argv)
 {
   // 设置控制台输出为 UTF-8 编码
   SetConsoleOutputCP(CP_UTF8);
-
-  return CatchAndWriteMiniDump(
-      [=]() {
-        std::thread([]() {
+  std::thread([]() {
+    CatchAndWriteMiniDump(
+        [=]() {
           log_add_fp(fopen("log_trace.txt", "w+"), LOG_TRACE);
           log_add_fp(fopen("log_error.txt", "w+"), LOG_ERROR);
           log_trace("service run....");
           run_echo_server("tcp");
-        }).detach();
-        InitCmd();
-        return 1;
-      },
-      nullptr);
-  // main一个线程
-  // 服务端,lua一个线程【完成】
-  // lua需要重启，和执行lua代码功能，需要封装，计时器【完成】|发送数据【完成】|接受数据【完成】|执行sql【完成】
-  // 数据库查询一个线程【完成】
+          printf("service error \n");
+          return 0;
+        },
+        nullptr);
+  }).detach();
+  InitCmd();
+  return 1;
 }

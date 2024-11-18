@@ -16,13 +16,10 @@ public:
   ~LuaInit();
 
   void notifyConnent(int connent_type, Player* p, DataPacket* packet);
-  void updateMysqlInfo();
-  void updateServiceInfo();
   void setService(io_service* service);
-
   void luaregister(lua_State* L);
-
   void loadCode(std::string code);
+  void init();
 
   std::string mysql_host, mysql_user, mysql_pass, mysql_db;
   int mysql_port;

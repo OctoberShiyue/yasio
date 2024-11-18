@@ -1,6 +1,3 @@
-print("配置服务器端口：", serviceInit("0.0.0.0", 18199))
-print("配置数据库：", mysqlInit("127.0.0.1", "root", "Aa1023261581", "testorpg", 3306))
-
 require "lib.init"
 
 -- 登录
@@ -58,9 +55,8 @@ print("测试[mysqlQuery]", mysqlQuery("select * from `user` where `uid`=1234567
     end
 end))
 
--- gint=100
+gint=100
 
--- createTime(5*1000,function ()
---    print("gint=",gint)
---    return false
--- end)
+createTime(5*1000,function ()
+   print("gint=",gint)
+end)

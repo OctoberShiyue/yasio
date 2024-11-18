@@ -16,11 +16,6 @@ LuaInit::LuaInit(ConnectionPool* mysql_pool, std::map<int, Player*>* Players)
   L              = luaL_newstate();
   luaL_openlibs(L);
   luaregister(L);
-  const char* luaCode = "require 'main'";
-  if (luaL_dostring(L, luaCode))
-  {
-    fprintf(stderr, "Error: %s\n", lua_tostring(L, -1));
-  }
 }
 
 LuaInit::~LuaInit() {}
@@ -53,20 +48,7 @@ void LuaInit::notifyConnent(int connent_type, Player* p, DataPacket* packet)
     lua_pop(L, 1);
   }
 }
-void LuaInit::updateMysqlInfo()
-{
-  this->mysql_host = mysql_host2;
-  this->mysql_user = mysql_user2;
-  this->mysql_pass = mysql_pass2;
-  this->mysql_db   = mysql_db2;
-  this->mysql_port = mysql_port2;
-}
-void LuaInit::updateServiceInfo()
-{
 
-  this->service_ip   = service_ip2;
-  this->service_port = service_port2;
-}
 void LuaInit::setService(io_service* service) { gLuaService = service; }
 extern "C" {
 
@@ -174,40 +156,6 @@ static int mysqlQuery(lua_State* L)
 }
 }
 
-static int mysqlInit(lua_State* L)
-{
-
-  if (!lua_isstring(L, 1) || !lua_isstring(L, 2) || !lua_isstring(L, 3) || !lua_isstring(L, 4) || !lua_isnumber(L, 5))
-  {
-    lua_pushboolean(L, false);
-    return 1;
-  }
-
-  mysql_host2 = lua_tostring(L, 1);
-  mysql_user2 = lua_tostring(L, 2);
-  mysql_pass2 = lua_tostring(L, 3);
-  mysql_db2   = lua_tostring(L, 4);
-  mysql_port2 = (int)lua_tonumber(L, 5);
-
-  lua_pushboolean(L, true);
-  return 1;
-}
-
-static int serviceInit(lua_State* L)
-{
-
-  if (!lua_isstring(L, 1) || !lua_isnumber(L, 2))
-  {
-    lua_pushboolean(L, false);
-    return 1;
-  }
-
-  service_ip2   = lua_tostring(L, 1);
-  service_port2 = (int)lua_tonumber(L, 2);
-
-  lua_pushboolean(L, true);
-  return 1;
-}
 extern "C" {
 void LuaInit::luaregister(lua_State* L)
 {
@@ -219,12 +167,6 @@ void LuaInit::luaregister(lua_State* L)
 
   lua_pushcfunction(L, mysqlQuery);
   lua_setglobal(L, "mysqlQuery");
-
-  lua_pushcfunction(L, mysqlInit);
-  lua_setglobal(L, "mysqlInit");
-
-  lua_pushcfunction(L, serviceInit);
-  lua_setglobal(L, "serviceInit");
 
   // 加载路径
   lua_getglobal(L, "package");
@@ -243,6 +185,14 @@ void LuaInit::loadCode(std::string code)
     return;
   }
   if (luaL_dostring(L, code.data()))
+  {
+    fprintf(stderr, "Error: %s\n", lua_tostring(L, -1));
+  }
+}
+void LuaInit::init()
+{
+  const char* luaCode = "require 'main'";
+  if (luaL_dostring(L, luaCode))
   {
     fprintf(stderr, "Error: %s\n", lua_tostring(L, -1));
   }
