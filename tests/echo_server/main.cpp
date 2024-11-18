@@ -111,12 +111,9 @@ void run_echo_server(const char* protocol)
   io_service server(endpoints, 1);
   gservice = &server;
 
-
-  gluainit = new LuaInit(gmysql_pool, &gPlayers);
-  gluainit->setService(gservice);
-  gluainit->init();
-
   gmysql_pool = new ConnectionPool(gservice);
+  gluainit    = new LuaInit(gmysql_pool, &gPlayers);
+  gluainit->setService(gservice);
   gmysql_pool->setLuaInit(gluainit);
   gmysql_pool->host = configData["mysql"]["host"].get<std::string>().c_str();
   gmysql_pool->user = configData["mysql"]["user"].get<std::string>().c_str();
@@ -124,7 +121,7 @@ void run_echo_server(const char* protocol)
   gmysql_pool->db   = configData["mysql"]["db"].get<std::string>().c_str();
   gmysql_pool->port = configData["mysql"]["port"].get<int>();
   gmysql_pool->init();
-
+  gluainit->init();
 
 
   server.set_option(YOPT_S_NO_NEW_THREAD, 1);
@@ -136,7 +133,7 @@ void run_echo_server(const char* protocol)
   timer.expires_from_now(std::chrono::seconds(1));
   timer.async_wait_once([=](io_service& server) {
     server.set_option(YOPT_C_UNPACK_PARAMS, 0, 65535, 0, 4, 0);
-    printf("[server][%s] open server %s:%u ...\n", protocol, gluainit->service_ip.c_str(), gluainit->service_port);
+    printf("[server][%s] open server %s:%u ...\n", protocol, endpoints[0].get_ip().c_str(), endpoints[0].get_port());
     if (cxx20::ic::iequals(protocol, "udp"))
       server.open(0, YCK_UDP_SERVER);
     else if (cxx20::ic::iequals(protocol, "kcp"))

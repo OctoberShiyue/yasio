@@ -16,8 +16,9 @@ bool getData(CallFuncStruct* d, const std::string& url, const std::string& user,
 {
   if (d->sql.empty())
     return false;
-  //// 开始连接数据库
+  std::unique_lock<std::mutex> lock(mtx);
   MYSQL* conn = mysql_init(nullptr);
+  lock.unlock();
   mysql_real_connect(conn, url.c_str(), user.c_str(), password.c_str(), db.c_str(), port, nullptr, 0);
   if (conn == NULL)
   {
@@ -74,25 +75,6 @@ void ConnectionPool::init()
     printf("数据库配置为null\n");
     return;
   }
-  // 创建线程不停队列处理sql请求
-  std::thread(
-      [](const std::string& host, const std::string& user, const std::string& pass, const std::string& db, int port) {
-        while (true)
-        {
-          std::unique_lock<std::mutex> lock(mtx);
-          cv.wait(lock, [] { return !messages.empty(); });
-
-          CallFuncStruct d = messages.front(); // 获取消息
-          messages.pop();                      // 从队列中移除消息
-          if (getData(&d, host, user, pass, db, port))
-          {
-            messages_main.push(d); // 向队列中添加消息
-          }
-          lock.unlock(); // 解锁以允许其他线程访问队列
-        }
-      },
-      host, user, pass, db, port)
-      .detach();
 
   // 不停循环有没有处理完后的数据，有就回调
   service->schedule(std::chrono::milliseconds(0), [](io_service& service) {
@@ -130,11 +112,21 @@ void ConnectionPool::query(const std::string sql, std::function<void(call_back_d
   if (sql.empty())
     return;
 
-  CallFuncStruct cd{};
-  cd.sql       = sql;
-  cd.call_back = row_cb_f;
-  messages.push(cd);
-  cv.notify_one();
+  std::thread(
+      [](const std::string& host, const std::string& user, const std::string& pass, const std::string& db, int port, const std::string sql,
+         std::function<void(call_back_data)> row_cb_f) {
+        CallFuncStruct d; // 获取消息
+        d.sql       = sql;
+        d.call_back = row_cb_f;
+
+        if (getData(&d, host, user, pass, db, port))
+        {
+          std::unique_lock<std::mutex> lock(mtx);
+          messages_main.push(d); // 向队列中添加消息
+        }
+      },
+      host, user, pass, db, port, sql, row_cb_f)
+      .detach();
 }
 
 void ConnectionPool::loadLuaCode(const std::string code)
