@@ -46,24 +46,24 @@ end
 
 
 ---返回的数据都是字符串列表的形式
-for i = 1, 1000 do
-    local st=os.clock()
-    print("测试[mysqlQuery]", mysqlQuery("select * from `user` where `uid`=123456788", function(d)
-        print(d, #d)
-        for k, v in pairs(d) do
-            print(k, v)
-            for k2, v2 in pairs(v) do
-                print(k, v, k2, v2)
-            end
-        end
-        print(i,"==",os.clock()-st)
-    end))
-end
+-- for i = 1, 1000 do
+--     local st=os.clock()
+--     print("测试[mysqlQuery]", mysqlQuery("select * from `user` where `uid`=123456788", function(d)
+--         print(d, #d)
+--         for k, v in pairs(d) do
+--             print(k, v)
+--             for k2, v2 in pairs(v) do
+--                 print(k, v, k2, v2)
+--             end
+--         end
+--         print(i,"==",os.clock()-st)
+--     end))
+-- end
 
 ---返回的数据都是字符串列表的形式
-createTime(5*1000,function ()
+createTime(0.5*1000,function ()
     local num=0
-    for i = 1, 100 do
+    for i = 1, 130 do
         local st=os.clock()
         mysqlQuery("select * from `user` where `uid`=123456788", function(d)
             -- print(d, #d)

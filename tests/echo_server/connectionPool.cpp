@@ -113,7 +113,7 @@ void ConnectionPool::query(const std::string sql, std::function<void(call_back_d
     return;
 
   std::thread(
-      [](const std::string& host, const std::string& user, const std::string& pass, const std::string& db, int port, const std::string sql,
+      [](const std::string& host, const std::string& user, const std::string& pass, const std::string& db, int port, const std::string& sql,
          std::function<void(call_back_data)> row_cb_f) {
         CallFuncStruct d; // 获取消息
         d.sql       = sql;

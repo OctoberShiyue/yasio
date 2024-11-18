@@ -128,6 +128,7 @@ static int mysqlQuery(lua_State* L)
   int funcRef = luaL_ref(L, LUA_REGISTRYINDEX);
   gLuamysql_pool->query(lua_tostring(L, 1), [=](call_back_data data) {
     lua_rawgeti(L, LUA_REGISTRYINDEX, funcRef);
+    luaL_unref(L, LUA_REGISTRYINDEX, funcRef);
     lua_newtable(L);
     for (size_t i = 0; i < data.size(); i++)
     {
@@ -145,7 +146,6 @@ static int mysqlQuery(lua_State* L)
     if (lua_pcall(L, 1, 0, 0) != LUA_OK)
     {
       fprintf(stderr, "Error: %s\n", lua_tostring(L, -1));
-
       return;
     }
     return;
