@@ -75,8 +75,8 @@ void ConnectionPool::init()
     return;
   }
 
-  // 不停循环有没有处理完后的数据，有就回调
-  service->schedule(std::chrono::milliseconds(0), [](io_service& service) {
+  //// 不停循环有没有处理完后的数据，有就回调
+  service->schedule(std::chrono::milliseconds(10), [](io_service& service) {
     while (true)
     {
       std::unique_lock<std::mutex> lock(mtx);
